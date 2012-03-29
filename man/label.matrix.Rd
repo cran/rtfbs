@@ -1,0 +1,28 @@
+\name{label.matrix}
+\alias{label.matrix}
+\title{Name PWM & MM rows and columns}
+\usage{
+  label.matrix(mat, columnsOnly = FALSE)
+}
+\arguments{
+  \item{mat}{Matrix of which have the column and row names
+  populated}
+
+  \item{columnsOnly}{Only name the columns, not the rows}
+}
+\value{
+  Matrix with columns and (rows optional) named
+}
+\description{
+  Given a list of PWM or MM matrices, name the rows and
+  columns (if applicable) This function is used for
+  specifying the names of rows and columns for Markov
+  Models and Position Weight Matrices(PWMs) only.  In the
+  case of naming PWMs, set columnsOnly to true, as it
+  doesn't make sense to name the rows of a PWM.  The
+  columns are named 'A,C,G,T'.  The rows are uniquely
+  named, staring with A going to T If there are more than 4
+  rows, two characters are used AA, AC..., if more than 16
+  rows 3 characters are used, and so on.
+}
+

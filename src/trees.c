@@ -72,7 +72,7 @@ TreeNode *tr_new_from_string(const char *treestr) {
     c = treestr[i];
 
     if (in_distance) {
-      if (c != '(' && c != ',' && c != ')' && c != ':' && c != '#') {
+      if (c != '(' && c != ',' && c != ')' && c != ':' && c != '#' && c != '!') {
         str_append_char(diststr, c);
         continue;
       }
@@ -86,7 +86,7 @@ TreeNode *tr_new_from_string(const char *treestr) {
     }
 
     if (in_label) {
-      if (c != '(' && c != ',' && c != ')' && c != ':' && c != '#') {
+      if (c != '(' && c != ',' && c != ')' && c != ':' && c != '#' && c != '!') {
         str_append_char(labelstr, c);
         continue;
       }
@@ -133,6 +133,9 @@ TreeNode *tr_new_from_string(const char *treestr) {
     else if (c == '#') {
       str_clear(labelstr);
       in_label = TRUE;
+    }
+    else if (c == '!') {
+      node->hold_constant = 1;
     }
     else {			/* has to be part of name */
       if (!isspace(c) || node->name[0] != '\0')	/* avoid leading spaces */
@@ -209,6 +212,7 @@ TreeNode *tr_new_node() {
   n->height = 0;
   n->label = NULL;
   n->nodes = n->preorder = n->inorder = n->postorder = NULL;
+  n->hold_constant = 0;
   return(n);
 }
 
@@ -311,6 +315,8 @@ void tr_print_recur(FILE* f, TreeNode *n, int show_branch_lengths) {
 
   if (show_branch_lengths && n->parent != NULL)
     fprintf(f, ":%g", n->dparent);
+  if (n->hold_constant)
+    fprintf(f, "!");
   if (n->label != NULL)
     fprintf(f, " # %s", n->label);
 }
@@ -436,6 +442,7 @@ void tr_node_cpy(TreeNode *dest, TreeNode *src) {
   strcpy(dest->name, src->name); 
   dest->dparent = src->dparent;
   if (src->label != NULL) dest->label = copy_charstr(src->label);
+  dest->hold_constant = src->hold_constant;
   /* don't copy data, nnodes, height, preorder, inorder, postorder */
 }
 
@@ -535,6 +542,9 @@ void tr_print_ordered_recur(FILE* f, TreeNode *n, int *left_right,
 
   if (show_branch_lengths)
     fprintf(f, ":%g", n->dparent);
+
+  if (n->hold_constant)
+    fprintf(f, "!");
 
   if (n->label != NULL)
     fprintf(f, " # %s", n->label);
@@ -960,9 +970,13 @@ void tr_prune(TreeNode **t,     /* Tree to prune (may be altered
               List *names,      /* List of names.  On return, will
                                    contain list of names of leaves
                                    that were pruned away.  */
-              int all_but       /* if FALSE, prune leaves *in*
+              int all_but,       /* if FALSE, prune leaves *in*
                                    'names'; if TRUE, prune leaves *not
                                    in* 'names'  */
+              int *id_map        /* if not NULL, should be allocated to 
+				    the number of nodes in original tree.
+				    On return, will be filled in with the
+				    new id for each node */
               ) {
 
   TreeNode *n;
@@ -1057,11 +1071,17 @@ void tr_prune(TreeNode **t,     /* Tree to prune (may be altered
   if (*t != NULL && (*t)->postorder != NULL) (*t)->postorder = NULL;
 
   /* reset ids, nodes, nnodes, heights */
+  if (id_map != NULL) {
+    for (i=0; i < lst_size(traversal); i++)
+      id_map[i] = -1;
+  }
   if (*t != NULL) {
     (*t)->nnodes = new_nnodes;
     traversal = tr_preorder(*t);
     for (i = 0; i < lst_size(traversal); i++) {
       n = lst_get_ptr(traversal, i);
+      if (id_map != NULL)
+	id_map[n->id] = i;
       n->id = i;
       if (n != *t) n->nnodes = -1;
     }
@@ -1090,7 +1110,7 @@ void tr_prune_supertree(TreeNode **t, TreeNode *node) {
       lst_push_ptr(prune_names, s);
     }
   }
-  tr_prune(t, prune_names, FALSE);
+  tr_prune(t, prune_names, FALSE, NULL);
   lst_free_strings(prune_names);
   lst_free(prune_names);
   sfree(inSub);
@@ -1109,7 +1129,7 @@ void tr_prune_subtree(TreeNode **t, TreeNode *node) {
       lst_push_ptr(prune_names, s);
     }
   }
-  tr_prune(t, prune_names, TRUE);
+  tr_prune(t, prune_names, TRUE, NULL);
   lst_free_strings(prune_names);
   lst_free(prune_names);
 }
@@ -1237,7 +1257,7 @@ double tr_scale_by_subtree(TreeNode *tree, TreeNode *sub) {
 
   /* Now scale */
   n = tr_create_copy(tree);
-  tr_prune(&n, sub_names, TRUE);
+  tr_prune(&n, sub_names, TRUE, NULL);
   scale = tr_total_len(sub) / tr_total_len(n);
   tr_scale(tree, scale);
   tr_free(n);
@@ -1369,7 +1389,9 @@ void tr_print_nodes(FILE *F, TreeNode *tree) {
     fprintf(F, "\tlchild = %d\n", n->lchild == NULL ? -1 : n->lchild->id);
     fprintf(F, "\trchild = %d\n", n->rchild == NULL ? -1 : n->rchild->id);
     fprintf(F, "\tname = '%s'\n", n->name);
-    fprintf(F, "\tdparent = %g\n", n->dparent);
+    fprintf(F, "\tdparent = %g", n->dparent);
+    if (n->hold_constant) fprintf(F, " (constant)\n");
+    else fprintf(F, "\n");
     if (n->label != NULL)
       fprintf(F, "\tlabel = %s\n", n->label);
     fprintf(F, "\n");
@@ -1509,6 +1531,7 @@ void tr_reroot(TreeNode *tree, TreeNode *selected_node, int include_branch) {
     n = lst_get_ptr(tree->nodes, i);
     n->nnodes = (n == newroot ? lst_size(tree->nodes) : -1);
     n->height = 0;
+    n->hold_constant = 0;
   }
   lst_free(tree->nodes);
 

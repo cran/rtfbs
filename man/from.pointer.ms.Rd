@@ -1,0 +1,34 @@
+\name{from.pointer.ms}
+\alias{from.pointer.ms}
+\title{MS From Pointer}
+\usage{
+  from.pointer.ms(src)
+}
+\arguments{
+  \item{src}{An MS object stored by reference
+  (pointer.only=TRUE)}
+}
+\value{
+  an MS object stored in R.  If src is already stored in R,
+  returns the original object.
+}
+\description{
+  RTFBS can store MS objects in R's memory, or C's memory
+  for efficency reasons.  This function transforms an MS
+  object whose data is stored in memory on the C side to an
+  MS object whose data is stored on the R side.  The result
+  is a new MS object containing data stored in memory on
+  the R side copied from memory on the C side Copying an MS
+  object from C into R enables modification of the MS
+  object using generic R functions.  To do the reverse,
+  (copying an MS object from R to C), use the as.pointer.ms
+  function.
+}
+\author{
+  Nick Peterson
+}
+\seealso{
+  \code{\link{ms}} for details on MS storage options.
+}
+\keyword{ms}
+

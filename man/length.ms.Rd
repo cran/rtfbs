@@ -1,0 +1,17 @@
+\name{length.ms}
+\alias{length.ms}
+\title{Length of MS object}
+\usage{
+  \method{length}{ms} (x)
+}
+\arguments{
+  \item{x}{MS object}
+}
+\value{
+  Integer containing the number of sequences the MS object
+  contains
+}
+\description{
+  Return number of sequences contained in MS object
+}
+

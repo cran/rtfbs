@@ -1,0 +1,38 @@
+\name{read.pwm}
+\alias{read.pwm}
+\title{Read PWM object}
+\usage{
+  read.pwm(filename)
+}
+\arguments{
+  \item{filename}{Full Path to file of MEME Text format}
+}
+\value{
+  Matrix object containing the Position Weight Matrix read
+  from the file. If the file contains more than one PWM, a
+  list of Matrix objects are returned, one for each PWM.
+  The returned PWMs are log transformed, so that entry
+  [i,j] of the matrix represents the log probability of
+  observing the base from column j in the i'th position of
+  a transcription factor binding site.
+}
+\description{
+  Read and log transform Position Weight Matrices (PWMs)
+  from file. Each position weight matrix represents a
+  Transcription Factor motif that is being searched for.
+  Files may contain one or more motifs. Only MEME Text
+  formated files are supported. Look in the examples below
+  to find an example PWM file.
+}
+\examples{
+require("rtfbs")
+exampleArchive <- system.file("extdata", "NRSF.zip", package="rtfbs")
+pwmFile <- "pwm.meme"
+unzip(exampleArchive, pwmFile)
+# Read in Position Weight Matrix (PWM) from MEME file from
+#  the examples into a Matrix object
+pwm <- read.pwm(pwmFile)
+# Print PWM as an R matrix
+print(pwm)
+}
+

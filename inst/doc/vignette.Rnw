@@ -152,13 +152,13 @@ for (i in 1:length(msGroups))
 
 Plotting the FDR vs. score enables us to choose an
 appropriate FDR threshold value for our binding sites.  You can use
-plot.fdr() to plot the data returned by the calc.fdr function.  Or,
-you can give plot.fdr a list of results from calc.fdr to view
+makeFdrPlot() to plot the data returned by the calc.fdr function.  Or,
+you can give makeFdrPlot a list of results from calc.fdr to view
 multiple curves at once (i.e., curves for each GC bin).
 
 <<Plot,fig=TRUE,prefix=FALSE>>=
 
-plot.fdr(fdrMap, col=rainbow(4))
+makeFdrPlot(fdrMap, col=rainbow(4))
 @ 
 
 The FDR plot is shown in Figure \ref{fig:fdrplot}.

@@ -7,10 +7,10 @@ R Transcription Factor Binding Site identification tool
 }
 \description{
 RTFBS identifies and scores possible Transcription Factor
-Binding Sites and allows for FDR analysis and pruning.  It supports
-splitting of sequences based on size or a specified GFF, grouping
-by GC content, and specification of Markov model order.  The heavy
-lifting is done in C while all results are made available via R.
+    Binding Sites and allows for FDR analysis and pruning.  It supports
+    splitting of sequences based on size or a specified GFF, grouping
+    by GC content, and specification of Markov model order.  The heavy
+    lifting is done in C while all results are made available via R.
 }
 \details{
 \tabular{ll}{
@@ -19,35 +19,38 @@ Copyright: \tab The code in src/pcre is Copyright (c) 1997-2010 University\cr
 \tab of California, Cornell University.\cr
 Package: \tab rtfbs\cr
 License: \tab BSD\cr
-Version: \tab 0.1.0\cr
+Version: \tab 0.2\cr
 URL: \tab http://compgen.bscb.cornell.edu/rtfbs\cr
-Date: \tab 2011-07-18\cr
-Depends: \tab stats, rphast\cr
-Collate: \tab 'tfbs.R'\cr
-Built: \tab R 2.13.1; x86_64-pc-linux-gnu; 2011-07-23 18:14:59 UTC; unix\cr
+Date: \tab 2012-03-29\cr
+Depends: \tab \cr
+\tab stats,\cr
+\tab rphast\cr
+Collate: \tab \cr
+\tab 'tfbs.R'\cr
+Built: \tab R 2.14.2; x86_64-pc-linux-gnu; 2012-03-29 18:08:28 UTC; unix\cr
 }
 
 Index:
 \preformatted{
-[.ms                    Extract, replace, reorder MS...
+[.ms                    Extract, replace, reorder MS
 as.pointer.ms           MS To Pointer
 build.mm                Build Markov Model to represent sequences in an
                         MS object
 calc.fdr                Calculate FDR
 concat.ms               Concat MS
 from.pointer.ms         MS From Pointer
-gcContent.ms            Get GC content of each sequence in an MS
-                        object...
+gcContent.ms            Get GC content of each sequence in an MS object
 groupByGC.ms            Group sequences by GC
 is.pointer.ms           Data in R or C
+label.matrix            Name PWM & MM rows and columns
 length.ms               Length of MS object
 lengths.ms              MS sequence lengths
+makeFdrPlot             Plot FDR
 ms                      Multiple Sequence (MS) Objects
 names.ms                MS Sequence Names
 offsets.ms              Get index offsets
 output.sites            Threshold possible binding sites by Score or
                         FDR
-plot.fdr                Plot FDR
 print.ms                Printing MS objects
 read.mm                 Read Markov Model from file
 read.ms                 Reading in sequences from file
@@ -68,8 +71,8 @@ Further information is available in the following vignettes:
 }
 \author{
 Nicholas Peterson, Andre Martins, Melissa Hubisz, and Adam
-Siepel
+    Siepel
 
-Maintainer: RTFBS Group <rtfbs-help-l@cornell.edu>
+Maintainer: Melissa Hubisz <mjhubisz@cornell.edu>
 }
 \keyword{ package }

@@ -1,1 +1,8 @@
 4-26-2011:  0.1 initial build of RTFBS package
+3-29-2012:  0.2 
+	Renamed plot.fdr to makeFdrPlot to indicate that it is not an S3 method
+	Cleaned up documentation to use roxygen2 instead of roxygen
+	Bug fixes:
+	 Fixed problem where it couldn't score sequences the same length as the PWM
+	 Fixed problem where calc.fdr crashed when simSeqsScores has length 0
+	

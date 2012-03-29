@@ -1,0 +1,23 @@
+\name{print.ms}
+\alias{print.ms}
+\title{Printing MS objects}
+\usage{
+  \method{print}{ms} (x, ...,
+    print.all = ((length(x) < 15) && (sum(lengths.ms(x)) < 500)))
+}
+\arguments{
+  \item{x}{an object of class ms}
+
+  \item{...}{additional arguments sent to \code{print}}
+
+  \item{print.all}{whether to suppress printing of the
+  bases, names, offsets}
+}
+\description{
+  Prints an MS (multiple sequence) object. #'
+}
+\author{
+  Nick Peterson
+}
+\keyword{ms}
+

@@ -57,7 +57,9 @@ struct tree_node {
                                    sign and a character string.  Used 
 				   to indicate which lineage-specific 
 				   model to use */
-
+  int hold_constant;            /**< If 1, do not optimize this branch length. 
+                                   Indicated by an exclamation point after the
+                                   branch length */
   List *nodes;                  /**< List of nodes: ith element is a
                                    pointer to the node with id = i (Only guaranteed to be defined for
      				   the TreeNode at the root of a tree, defined on initialization) */
@@ -308,8 +310,11 @@ double tr_scale_by_subtree(TreeNode *tree, TreeNode *sub);
     @param[in,out] names List of names.  On return, will contain list of names of leaves
            that were pruned away.
     @param[in] all_but if FALSE, prune leaves *in* 'names'; if TRUE, prune leaves *not in* 'names'
+    @param[out] id_map if not NULL, should be allocated to the number of nodes 
+    in original tree. On return, will be filled in with the new id for each 
+    node
 */
-void tr_prune(TreeNode **t, List *names, int all_but);
+void tr_prune(TreeNode **t, List *names, int all_but, int *id_map);
 
 /** Prune away all nodes not in the specified subtree.
     @param t Root node of tree to prune
@@ -398,6 +403,8 @@ void tr_name_ancestors(TreeNode *tree);
     subtree.  
     @warning ids will not be altered, so they will no longer be 
     consistent with a preorder traversal of the tree 
+    @warning will not maintain memory of which branches are to be held
+    constant
   @param tree Tree to re-root
   @param newroot The new root for specified tree
   @param include_branch If include_branch == FALSE, the selected node will become

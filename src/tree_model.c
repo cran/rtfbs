@@ -440,7 +440,6 @@ TreeModel *tm_new_from_file(FILE *f, int discard_likelihood) {
       vec_free(tmpvect);                     
     }
     else if (!strcmp(tag, RATE_WEIGHTS_TAG)) {
-      Vector *rate_weights;
       if (nratecats < 0) 
         die("ERROR: NRATECATS must precede RATE_WEIGHTS in tree model file.\n");
       rate_weights = vec_new_from_file(f, nratecats);
@@ -839,7 +838,7 @@ AltSubstMod* tm_add_alt_mod(TreeModel *mod, String *altmod_str) {
     altmod->separate_model = 1;
   }
   else {
-    int tempidx, j;
+    int j;
     //otherwise it is a list of parameters to be optimized.  Use the 
     //same subst model as main model, but optimize these parameters
     //separately.
@@ -867,7 +866,6 @@ AltSubstMod* tm_add_alt_mod(TreeModel *mod, String *altmod_str) {
 	lst_delete_idx(altmod->param_list, i+1);
       }
     }
-    tempidx=0;
     for (j=0; j<lst_size(altmod->param_list); j++) {
       String *param_name = str_new_charstr(((String*)lst_get_ptr(altmod->param_list, j))->chars);
       int sharemod = -1;
@@ -1895,7 +1893,7 @@ int tm_fit(TreeModel *mod, MSA *msa, Vector *params, int cat,
 	   FILE *error_file) {
   double ll;
   Vector *lower_bounds, *upper_bounds, *opt_params;
-  int i, retval = 0, npar, nstate, numeval;
+  int i, retval = 0, npar, numeval;
 
   if (msa->ss == NULL) {
     if (msa->seqs == NULL)
@@ -1903,7 +1901,6 @@ int tm_fit(TreeModel *mod, MSA *msa, Vector *params, int cat,
     ss_from_msas(msa, mod->order+1, 0, NULL, NULL, NULL, -1, 
 		 subst_mod_is_codon_model(mod->subst_mod));
   }
-  nstate = int_pow(strlen(msa->alphabet), mod->order+1);
 
   if (mod->backgd_freqs == NULL)  {
     tm_init_backgd(mod, msa, cat);
@@ -1950,6 +1947,13 @@ int tm_fit(TreeModel *mod, MSA *msa, Vector *params, int cat,
       mod->alt_subst_mods != NULL ||
       mod->selection_idx >= 0)
     mod->scale_during_opt = 1;
+  if (mod->estimate_branchlens == TM_BRANCHLENS_ALL) {
+    for (i=0; i < mod->tree->nnodes; i++) {
+      TreeNode *n = lst_get_ptr(mod->tree->nodes, i);
+      if (n != mod->tree && n->hold_constant)
+	mod->scale_during_opt = 1;
+    }
+  }
   
   if (!quiet) fprintf(stderr, "numpar = %i\n", opt_params->size);
   retval = opt_bfgs(tm_likelihood_wrapper, opt_params, (void*)mod, &ll, 
@@ -2163,7 +2167,7 @@ void tm_setup_params(TreeModel *mod) {
     for (node_idx=0; node_idx < lst_size(traversal); node_idx++) {
       n = lst_get_ptr(traversal, node_idx);
       if (n->parent == NULL) continue;  //skip root
-      if (mod->root_leaf_id == n->id) {
+      if (mod->root_leaf_id == n->id || n->hold_constant) {
 	temp_idx++;
 	continue;  //don't optimize
       }
@@ -2681,6 +2685,20 @@ void tm_init_rootleaf(TreeModel *mod, Vector *params) {
   return;
 }
   
+void tm_init_const_branches(TreeModel *mod, Vector *params) {
+  int node_idx, temp_idx=0;
+  List *traversal = tr_preorder(mod->tree);
+  TreeNode *n;
+
+  for (node_idx=0; node_idx < lst_size(traversal); node_idx++) {
+    n = lst_get_ptr(traversal, node_idx);
+    if (n->parent == NULL) continue;  //skip root
+    if (n->hold_constant)
+      vec_set(params, mod->bl_idx + temp_idx, n->dparent);
+    temp_idx++;
+  }
+}
+
 
 /* initializes all branch lengths to designated constant; initializes
    rate-matrix params using specified kappa; kappa ignored for JC69;
@@ -2718,6 +2736,7 @@ Vector *tm_params_init(TreeModel *mod, double branchlen, double kappa,
     for (i = 0; i < nbranches; i++) 
       vec_set(params, mod->bl_idx+i, branchlen);
     tm_init_rootleaf(mod, params);
+    tm_init_const_branches(mod, params);
   }
 
   if (mod->backgd_freqs == NULL) {
@@ -2828,6 +2847,7 @@ Vector *tm_params_init_random(TreeModel *mod) {
               0.01 + (0.5 - 0.01) * unif_rand());
               /* we'll use the interval from 0.01 to 0.5 */
     tm_init_rootleaf(mod, params);
+    tm_init_const_branches(mod, params);
   }
 
   if (mod->nratecats > 1) {
@@ -3123,6 +3143,7 @@ double tm_params_init_branchlens_parsimony(Vector *params, TreeModel *mod,
   sfree(numMinState);
   sfree(nodecost);
   //  printf("totalCost=%f\n", totalCost);
+  tm_init_const_branches(mod, params);
   return totalCost;
 }
 
@@ -3401,7 +3422,7 @@ void tm_prune(TreeModel *mod,   /* TreeModel whose tree is to be pruned  */
                                    leaves on return.  Must be
                                    pre-allocated */
               ) {
-  int i, j, old_nnodes = mod->tree->nnodes;
+  int i, j, old_nnodes = mod->tree->nnodes, *id_map = NULL;
 
   if (mod->tree->nnodes < 3)
     die("ERROR tm_prune: tree has %i nodes (should have at least 3)\n", 
@@ -3411,10 +3432,15 @@ void tm_prune(TreeModel *mod,   /* TreeModel whose tree is to be pruned  */
   for (i = 0; i < msa->nseqs; i++)
     lst_push_ptr(names, str_new_charstr(msa->names[i]));
 
-  tr_prune(&mod->tree, names, TRUE);
+  if (mod->alt_subst_mods_ptr != NULL)
+    id_map = smalloc(mod->tree->nnodes*sizeof(int));
 
-  if (mod->tree == NULL)
+  tr_prune(&mod->tree, names, TRUE, id_map);
+
+  if (mod->tree == NULL) {
+    if (id_map != NULL) sfree(id_map);
     return;                     /* whole tree pruned away; special case */
+  }
 
   if (lst_size(names) > 0) {
     /* free memory for eliminated nodes */
@@ -3430,6 +3456,22 @@ void tm_prune(TreeModel *mod,   /* TreeModel whose tree is to be pruned  */
     tm_free_rmp(mod);
     tm_init_rmp(mod);
   }
+
+  /* re-map alt_subst_mods_ptr if necessary */
+  if (mod->alt_subst_mods_ptr != NULL) {
+    AltSubstMod ***old = mod->alt_subst_mods_ptr;
+    mod->alt_subst_mods_ptr = smalloc(mod->tree->nnodes * sizeof(AltSubstMod**));
+    for (i=0; i < old_nnodes; i++) {
+      if (id_map[i] == -1) {
+	for (j=0; j < mod->nratecats; j++)
+	  sfree(old[i][j]);
+	sfree(old[i]);
+      } else 
+	mod->alt_subst_mods_ptr[id_map[i]] = old[i];
+    }
+    sfree(old);
+    sfree(id_map);
+  }
 }
 
 /** Extrapolate tree model and prune leaves not represented in
@@ -3441,7 +3483,7 @@ double tm_extrapolate_and_prune(TreeModel *mod, TreeNode *extrapolate_tree,
   double scale = tr_scale_by_subtree(t, mod->tree);
   for (i = 0; i < msa->nseqs; i++)
     lst_push_ptr(pruned_names, str_new_charstr(msa->names[i]));
-  tr_prune(&t, pruned_names, TRUE);
+  tr_prune(&t, pruned_names, TRUE, NULL);
   tm_reset_tree(mod, t);
   return scale;
 }
