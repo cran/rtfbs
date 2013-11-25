@@ -19,7 +19,7 @@ Copyright: \tab The code in src/pcre is Copyright (c) 1997-2010 University\cr
 \tab of California, Cornell University.\cr
 Package: \tab rtfbs\cr
 License: \tab BSD_3_clause + file LICENSE\cr
-Version: \tab 0.3\cr
+Version: \tab 0.3.2\cr
 URL: \tab http://compgen.bscb.cornell.edu/rtfbs\cr
 Date: \tab 2013-11-25\cr
 Imports: \tab \cr
@@ -28,7 +28,7 @@ Depends: \tab \cr
 \tab stats\cr
 Collate: \tab \cr
 \tab 'tfbs.R'\cr
-Built: \tab R 3.0.2; x86_64-unknown-linux-gnu; 2013-12-03 21:04:48 UTC; unix\cr
+Built: \tab R 3.0.2; x86_64-pc-linux-gnu; 2013-12-06 18:55:09 UTC; unix\cr
 }
 
 Index:

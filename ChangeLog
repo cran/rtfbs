@@ -8,3 +8,4 @@
 10-23-2013:  0.3 Added option to return posterior match scores
 	Optionally score.ms now returns a list() structure representing raw
 	match scores for each strand, and under the background model.
+12-5-2013: 0.3.1 Fixed memory allocation error in read.ms

@@ -195,6 +195,9 @@ them both to 0; an emulation function will be used. */
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "rtfbs"
 
+/* Define to the home page for this package. */
+#define PACKAGE_URL "http://compgen.bscb.cornell.edu/phast"
+
 /* Define to the version of this package. */
 #define PACKAGE_VERSION "1.1"
 

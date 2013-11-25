@@ -12,13 +12,13 @@ Description: RTFBS identifies and scores possible Transcription Factor
     splitting of sequences based on size or a specified GFF, grouping
     by G+C content, and specification of Markov model order.  The heavy
     lifting is done in C while all results are made available via R.
-Version: 0.3
+Version: 0.3.2
 URL: http://compgen.bscb.cornell.edu/rtfbs
 Date: 2013-11-25
 Imports: rphast
 Depends: stats
 Collate: 'tfbs.R'
-Packaged: 2013-12-03 21:07:16 UTC; mt269
+Packaged: 2013-12-06 18:56:40 UTC; melissa
 NeedsCompilation: yes
 Repository: CRAN
-Date/Publication: 2013-12-03 22:47:31
+Date/Publication: 2013-12-07 01:07:08
