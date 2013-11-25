@@ -434,21 +434,21 @@ void mafBlock_get_fieldSizes(MafBlock *block, int fieldSize[6]) {
       fieldSize[1] = sub->src->length;
 
     //field[2] is start
-    sprintf(tempstr, "%i", sub->start);
+    sprintf(tempstr, "%li", sub->start);
     if (strlen(tempstr) > fieldSize[2])
-      fieldSize[2] = strlen(tempstr);
+      fieldSize[2] = (int)strlen(tempstr);
 
     //field[3] is size
     sprintf(tempstr, "%i", sub->size);
     if (strlen(tempstr) > fieldSize[3])
-      fieldSize[3] = strlen(tempstr);
+      fieldSize[3] = (int)strlen(tempstr);
     
     //field[4] is strand... skip
     
     //field[5] is srcSize
-    sprintf(tempstr, "%i", sub->srcSize);
+    sprintf(tempstr, "%li", sub->srcSize);
     if (strlen(tempstr) > fieldSize[5])
-      fieldSize[5] = strlen(tempstr);
+      fieldSize[5] = (int)strlen(tempstr);
 
     //don't worry about size of lastField since it just goes to end-of-line
   }
@@ -658,7 +658,7 @@ FILE *mafBlock_open_outfile(char *fn, int argc, char *argv[]) {
   FILE *outfile;
   int i;
   if (fn != NULL) 
-    outfile = fopen(fn, "w");
+    outfile = phast_fopen_no_exit(fn, "w");
   else outfile = stdout;
   if (outfile == NULL) return NULL;
   fprintf(outfile, "##maf version=1\n#");
@@ -670,7 +670,7 @@ FILE *mafBlock_open_outfile(char *fn, int argc, char *argv[]) {
 
 void mafBlock_close_outfile(FILE *outfile) {
   fprintf(outfile, "#eof\n");
-  if (outfile != stdout) fclose(outfile);
+  if (outfile != stdout) phast_fclose(outfile);
 }
 
 String *mafBlock_get_refSpec(MafBlock *block) {
@@ -679,7 +679,7 @@ String *mafBlock_get_refSpec(MafBlock *block) {
   return sub->specName;
 }
 
-int mafBlock_get_start(MafBlock *block, String *specName) {
+long mafBlock_get_start(MafBlock *block, String *specName) {
   int idx=0;
   if (specName != NULL) 
     idx = hsh_get_int(block->specMap, specName->chars);
@@ -774,7 +774,8 @@ void mafBlock_subAlign(MafBlock *block, int start, int end) {
 int mafBlock_trim(MafBlock *block, int startcol, int endcol, String *refseq,
 		  int offset) {
   MafSubBlock *sub=NULL;
-  int i, specIdx, first=-1, last=-1, keep, startIdx, lastIdx, length, idx;
+  int i, specIdx, first=-1, last=-1, keep, length;
+  long startIdx, lastIdx, idx;
   if (block->seqlen == 0) return 0;
   if (refseq == NULL) {
     startIdx = 1;
@@ -836,24 +837,103 @@ void mafBlock_strip_eLines(MafBlock *block) {
 }
 
 //strip both i- and e-lines
-void mafBlock_strip_ieLines(MafBlock*block) {
+void mafBlock_strip_ieLines(MafBlock *block) {
   mafBlock_strip_iLines(block);
   mafBlock_strip_eLines(block);
 }
 
+
+void mafBlock_mask_region(MafBlock *block, GFF_Set *mask_feats, List *speclist) {
+  MafSubBlock *refblock, *maskblock;
+  int i, j, spec_idx;
+  GFF_Set *feat;
+  GFF_Feature *f, *prevf=NULL;
+  int next_feat_idx = 1;
+  char **maskseq;
+  int num_mask_seq=0;
+  long coord;
+  if (mask_feats == NULL || lst_size(mask_feats->features) == 0L) return;
+  maskseq = smalloc(lst_size(speclist)*sizeof(char*));
+  for (i=0; i < lst_size(speclist); i++) {
+    spec_idx = hsh_get_int(block->specMap, ((String*)lst_get_ptr(speclist, i))->chars);
+    if (spec_idx == -1) continue;
+    maskblock = lst_get_ptr(block->data, spec_idx);
+    if (maskblock->seq == NULL) continue;
+    maskseq[num_mask_seq++] = maskblock->seq->chars;
+  }
+  if (num_mask_seq == 0) {
+    sfree(maskseq);
+    return;
+  }
+  feat = gff_copy_set_no_groups(mask_feats);
+  gff_flatten_mergeAll(feat);
+  f = lst_get_ptr(feat->features, 0);
+
+  refblock = lst_get_ptr(block->data, 0);
+  coord = refblock->start;
+  for (i=0; i < block->seqlen; i++) {
+    if (refblock->seq->chars[i] != '-') coord++;  //this is 1-based coordinate
+    if (coord > f->end) {
+      if (next_feat_idx == lst_size(feat->features))
+	break;
+      prevf = f;
+      f = lst_get_ptr(feat->features, next_feat_idx++);
+      if (f->start <= prevf->end) {
+	die("Error: feats not sorted in mafBlock_mask_region");  //shouldn't happen
+      }
+    }
+    if (coord >= f->start && coord <= f->end) {
+      for (j=0; j < num_mask_seq; j++)
+	if (maskseq[j][i] != '-') maskseq[j][i] = 'N';
+    }
+  }
+  gff_free_set(feat);
+  sfree(maskseq);
+}
+
 //change all bases with quality score <= cutoff to N
-void mafBlock_mask_bases(MafBlock *block, int cutoff) {
+void mafBlock_mask_bases(MafBlock *block, int cutoff, FILE *outfile) {
   MafSubBlock *sub;
-  int i, j;
+  int i, j, firstMasked;
+  char *refseq=NULL, *refseqName;
+  long firstCoord, lastCoord=-1, *coord;
+
+  sub = (MafSubBlock*)lst_get_ptr(block->data, 0);
+  refseq = sub->seq->chars;
+  coord = smalloc(block->seqlen*sizeof(long));
+  firstCoord = sub->start;
+  refseqName = sub->src->chars;
+  for (i=0; i < block->seqlen; i++) {
+    if (refseq[i] != '-')
+      coord[i] = firstCoord++;
+    else coord[i] = -1;
+  }
+  lastCoord = firstCoord;
+
   for (i=0; i<lst_size(block->data); i++) {
     sub = (MafSubBlock*)lst_get_ptr(block->data, i);
     if (sub->quality==NULL) continue;
+    firstMasked=-1;
     for (j=0; j<block->seqlen; j++) {
-      if (sub->quality->chars[j]=='-' || sub->quality->chars[j]=='F') continue;
-      if (sub->quality->chars[j] - '0' <= cutoff)
-	sub->seq->chars[j]='N';
+      if (sub->quality->chars[j] == '-' && refseq[j]=='-') continue;
+      if ((sub->quality->chars[j] != '-' && sub->quality->chars[j] != 'F')
+	  && sub->quality->chars[j] - '0' <= cutoff) {
+	sub->seq->chars[j] = 'N';
+	if (firstMasked == -1 && refseq[j]!='-')
+	  firstMasked = j;
+      }
+      else if (firstMasked != -1) {
+	if (outfile != NULL) {
+	  fprintf(outfile, "%s\t%li\t%li\t%s\n", 
+		  refseqName, coord[firstMasked], coord[j], sub->src->chars);
+	}
+	firstMasked = -1;
+      }
     }
+    if (outfile != NULL && firstMasked != -1) 
+      fprintf(outfile, "%s\t%li\t%li\t%s\n", refseqName, coord[firstMasked], lastCoord, sub->src->chars);
   }
+  sfree(coord);
 }
 
 /* mask any indels that start in this block.  An indel will be "masked" if

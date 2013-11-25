@@ -101,12 +101,14 @@ MSA *msa_new(char **seqs, char **names, int nseqs, int length, char *alphabet) {
    NULL, default alphabet for DNA will be used.  This routine will
    abort if the sequence contains a character not in the alphabet. */
 MSA *msa_new_from_file_define_format(FILE *F, msa_format_type format, char *alphabet) {
-  int i, j, k=-1, nseqs, len, do_toupper;
+  int i, j, k=-1, nseqs=-1, len=-1, do_toupper;
   MSA *msa;
   String *tmpstr;
   
   if (format == UNKNOWN_FORMAT)
     die("unknown alignment format\n");
+  if (format == MAF)
+    die("msa_new_from_file_define_format cannot read MAF files\n");
 
   if (format == FASTA) 
     return (msa_read_fasta(F, alphabet));
@@ -115,11 +117,10 @@ MSA *msa_new_from_file_define_format(FILE *F, msa_format_type format, char *alph
   else if (format == SS) 
     return ss_read(F, alphabet);
 
-  if (format == PHYLIP || format == MPM) {
-    if (fscanf(F, "%d %d", &nseqs, &len) <= 0) 
-      die("ERROR: PHYLIP or MPM file missing initial length declaration.\n");
-  }
-
+  //format must be PHYLIP or MPM
+  if (fscanf(F, "%d %d", &nseqs, &len) <= 0) 
+    die("ERROR: PHYLIP or MPM file missing initial length declaration.\n");
+  
   tmpstr = str_new(STR_MED_LEN);
 
   /* we'll initialize the MSA first, so that we can use its
@@ -167,7 +168,7 @@ MSA *msa_new_from_file_define_format(FILE *F, msa_format_type format, char *alph
       for (k = 0; line[k] != '\0'; k++) {
         char base;
         if (isspace(line[k])) continue;
-        base = do_toupper ? toupper(line[k]) : line[k];
+        base = do_toupper ? (char)toupper(line[k]) : line[k];
         if (base == '.' && msa->inv_alphabet[(int)'.'] == -1) 
           base = msa->missing[0]; /* interpret '.' as missing data;
                                      maybe no longer necessary */
@@ -198,6 +199,8 @@ MSA *msa_new_from_file_define_format(FILE *F, msa_format_type format, char *alph
 
 MSA *msa_new_from_file(FILE *F, char *alphabet) {
   msa_format_type input_format = msa_format_for_content(F, 1);
+  if (input_format == MAF) 
+    die("msa_new_from_file detected MAF file, but cannot handle MAF files.  Try maf_read or another input format.\n");
   return msa_new_from_file_define_format(F, input_format, alphabet);
 }
 
@@ -321,7 +324,7 @@ MSA *msa_read_fasta(FILE *F, char *alphabet) {
 
     /* scan chars and adjust if necessary */
     for (j = 0; j < maxlen; j++) {
-      msa->seqs[i][j] = do_toupper ? toupper(s->chars[j]) : s->chars[j];
+      msa->seqs[i][j] = do_toupper ? (char)toupper(s->chars[j]) : s->chars[j];
       if (msa->seqs[i][j] == '.' && msa->inv_alphabet[(int)'.'] == -1) 
         msa->seqs[i][j] = msa->missing[0]; /* interpret '.' as missing
                                               data; maybe no longer
@@ -383,9 +386,9 @@ void msa_print(FILE *F, MSA *msa, msa_format_type format, int pretty_print) {
 
 void msa_print_to_file(const char *filename, MSA *msa, msa_format_type format, 
 		       int pretty_print) {
-  FILE *outfile = fopen_fname(filename, "w");
+  FILE *outfile = phast_fopen(filename, "w");
   msa_print(outfile, msa, format, pretty_print);
-  fclose(outfile);
+  phast_fclose(outfile);
 }
 
 
@@ -551,7 +554,7 @@ void msa_update_length(MSA *msa) {
   int i;
   if (msa->ss == NULL ||
       msa->ss->tuple_idx != NULL) return;
-  if (msa->seqs != NULL) msa->length = strlen(msa->seqs[0]);
+  if (msa->seqs != NULL) msa->length = (unsigned int)strlen(msa->seqs[0]);
   else {
       msa->length = 0;
       for (i=0; i<msa->ss->ntuples; i++)
@@ -951,7 +954,7 @@ int msa_get_seq_idx(MSA *msa, const char *name) {
    of range, they will be truncated. If cm is non-NULL, features
    within groups will be forced to be contiguous. */
 void msa_map_gff_coords(MSA *msa, GFF_Set *gff, int from_seq, int to_seq, 
-                        int offset, CategoryMap *cm) {
+                        int offset) {
 
   msa_coord_map **maps;
   int fseq = from_seq;
@@ -1103,6 +1106,41 @@ void msa_map_gff_coords(MSA *msa, GFF_Set *gff, int from_seq, int to_seq,
     if (maps[i] != NULL) msa_map_free(maps[i]);
   sfree(maps);
 }
+
+
+/* Note gff gets modified by this (non-overlapping features removed,
+  all coordinates in features mapped to frame of reference of entire 
+  MSA*/
+MSA **msa_split_by_gff(MSA *msa, GFF_Set *gff) {
+  MSA **msas = NULL;
+  int *starts, i;
+  GFF_Feature *feat;
+
+  starts = smalloc(lst_size(gff->features) * sizeof(int));
+  for (i=0; i < lst_size(gff->features); i++) {
+    checkInterruptN(i, 1000);
+    feat = lst_get_ptr(gff->features, i);
+    starts[i] = feat->start;
+    feat->start -= msa->idx_offset;
+    feat->end -= msa->idx_offset;
+  }
+  msa_map_gff_coords(msa, gff, -1, 0, 0);
+  if (lst_size(gff->features) == 0) {
+    sfree(starts);
+    return NULL;
+  }
+  
+  msas = smalloc(lst_size(gff->features) * sizeof(MSA*));
+  for (i=0; i < lst_size(gff->features); i++) {
+    feat = lst_get_ptr(gff->features, i);
+    msas[i] = msa_sub_alignment(msa, NULL, -1, feat->start - 1, feat->end);
+    msas[i]->idx_offset = starts[i] - 1;
+  }
+  sfree(starts);
+  return msas;
+}
+
+
 
 /* for convenience when going from one sequence to another.  use map=NULL to
    indicate frame of entire alignment.
@@ -1472,7 +1510,7 @@ void msa_print_stats(MSA *msa, FILE *F, char *label, int header, int start,
    start and end are *not* -1, freqs are based on the indicated interval
    (half-open, 0-based) */
 Vector *msa_get_base_counts(MSA *msa, int start, int end) {
-  int i, j, size = strlen(msa->alphabet);
+  int i, j, size = (int)strlen(msa->alphabet);
   double sum = 0;
   int s = start > 0 ? start : 0, e = end > 0 ? end : msa->length;
   Vector *base_freqs = vec_new(size);
@@ -1549,7 +1587,7 @@ void msa_get_base_freqs_tuples(MSA *msa, Vector *freqs, int k, int cat) {
   double sum = 0;               /* better to use double than int (or
                                    long int) because of overflow */
   int i, j, ignore, tup_idx, l, alph_idx;
-  int alph_size = strlen(msa->alphabet);
+  int alph_size = (int)strlen(msa->alphabet);
   vec_zero(freqs);
 
   /* use sufficient stats, if available */
@@ -1573,11 +1611,11 @@ void msa_get_base_freqs_tuples(MSA *msa, Vector *freqs, int k, int cat) {
             tup_idx += alph_idx * int_pow(alph_size, -offset); 
         }
         if (!ignore) {
-          int thiscount = (cat >= 0 ? msa->ss->cat_counts[cat][i] :
-                           msa->ss->counts[i]);
+          double thiscount = (cat >= 0 ? msa->ss->cat_counts[cat][i] :
+			      msa->ss->counts[i]);
           vec_set(freqs, tup_idx, 
-                         vec_get(freqs, tup_idx) + 
-                         thiscount); 
+		  vec_get(freqs, tup_idx) + 
+		  thiscount); 
         }
       }
     }
@@ -1619,23 +1657,23 @@ void msa_get_base_freqs_tuples(MSA *msa, Vector *freqs, int k, int cat) {
  */
 void msa_get_backgd_3x4(Vector *backgd, MSA *msa) {
   double freq[4][3], sum;
-  int i, j, spec, numcodon=msa->length/3, alph_size = strlen(msa->alphabet);
+  int i, j, spec, numcodon, alph_size = (int)strlen(msa->alphabet);
   char cod[4], *codon_mapping = get_codon_mapping(msa->alphabet);
   cod[3] = '\0';
   
-  if (numcodon == 0) return;
-
-  if (numcodon*3 != msa->length) 
-    die("msa_get_backgd_3x4 expected codon data; msa length is not multiple of 3");
   for (i=0; i < 4; i++)
     for (j=0; j < 3; j++)
       freq[i][j] = 0.0;
   if (msa->seqs != NULL) {
+    numcodon = msa->length/3;
+    if (numcodon == 0) return;
+    if (numcodon*3 != msa->length) 
+      die("msa_get_backgd_3x4 expected codon data; msa length is not multiple of 3");
     for (spec=0; spec < msa->nseqs; spec++) {
       for (i=0; i < numcodon; i++) {
 	for (j=0; j < 3; j++) {
 	  cod[j] = msa->seqs[spec][i*3+j];
-	  if (msa->is_missing[(int)cod[j]]) break;
+	  if (msa->inv_alphabet[(int)cod[j]] == -1) break;
 	}
 	if (j == 3 && 
 	    codon_mapping[tuple_index(cod, msa->inv_alphabet, alph_size)] != '$') {
@@ -1645,15 +1683,15 @@ void msa_get_backgd_3x4(Vector *backgd, MSA *msa) {
       }
     }
   } else {  //in this case, codons are stored as non-overlapping tuples
-    if (msa->ss != NULL) 
-      die("msa_get_backgd_3x4: no seqs or ss in msa?");  // this won't happen
+    if (msa->ss == NULL) 
+      die("msa_get_backgd_3x4: no seqs or ss in msa?");  // this shouldn't happen
     if (msa->ss->tuple_size != 3)
       die("msa_get_backgd_3x4: expected ss->tuple_size=3");
     for (i=0; i < msa->ss->ntuples; i++) {
       for (spec=0; spec < msa->nseqs; spec++) {
 	for (j=0; j < 3; j++) {
 	  cod[j] = col_string_to_char(msa, msa->ss->col_tuples[i], spec, msa->ss->tuple_size, j-2);
-	  if (msa->is_missing[(int)cod[j]]) break;
+	  if (msa->is_missing[(int)cod[j]] || cod[j]==GAP_CHAR) break;
 	}
 	if (j == 3 && 
 	    codon_mapping[tuple_index(cod, msa->inv_alphabet, alph_size)] != '$') {
@@ -1819,7 +1857,7 @@ GFF_Set *msa_get_informative_feats(MSA *msa,
       useSpec[i] = lst_get_int(specList, i);
   }
   if (msa->ss != NULL && msa->ss->tuple_idx == NULL && msa->seqs == NULL)
-    die("need ordered alignment for msa_get_informative_sites");
+    die("need ordered alignment for msa_get_informative_feats");
   if (msa->ss != NULL && msa->ss->tuple_idx != NULL) {
     is_informative = smalloc(msa->ss->ntuples*sizeof(int));
     for (i=0; i < msa->ss->ntuples; i++) {
@@ -2264,8 +2302,8 @@ MSA *msa_concat_from_files(List *fnames,
 
   for (i = 0; i < lst_size(fnames); i++) {
     String *fname = lst_get_ptr(fnames, i);
-    if ((F = fopen(fname->chars, "r")) == NULL || 
-        (source_msa = msa_new_from_file(F, alphabet)) == NULL) 
+    F = phast_fopen(fname->chars, "r"); 
+    if ((source_msa = msa_new_from_file(F, alphabet)) == NULL) 
       die("ERROR: cannot read MSA from %s.\n", fname->chars);
 
     if (source_msa->seqs == NULL) {
@@ -2316,7 +2354,7 @@ MSA *msa_concat_from_files(List *fnames,
     msa_concatenate(retval, source_msa);
 
     msa_free(source_msa);
-    fclose(F);
+    phast_fclose(F);
   }
 
   hsh_free(name_hash);
@@ -2600,6 +2638,8 @@ msa_format_type msa_format_for_content(FILE *F, int die_if_unknown) {
   str_re_free(fasta_re);
   str_re_free(lav_re);
   str_re_free(maf_re);
+  str_free(line);
+  lst_free(matches);
   if (retval == UNKNOWN_FORMAT && die_if_unknown)
     die("Unable to determine alignment format\n");
   return retval;
@@ -2763,7 +2803,7 @@ void msa_set_informative(MSA *msa, List *not_informative ) {
 
 /* reset alphabet of MSA */
 void msa_reset_alphabet(MSA *msa, char *newalph) {
-  int i, nchars = strlen(newalph);
+  int i, nchars = (int)strlen(newalph);
   sfree(msa->alphabet);  
   msa->alphabet = smalloc((nchars + 1) * sizeof(char));
   strcpy(msa->alphabet, newalph); 
@@ -2794,7 +2834,7 @@ void msa_missing_to_gaps(MSA *msa, int refseq) {
           char c = ss_get_char_tuple(msa, i, j, -k);
           if (msa->is_missing[(int)c]) {
             if (j == refseq - 1 && c == 'N') {
-              int char_idx = 4.0 * unif_rand();
+              int char_idx = (int)(4.0 * unif_rand());
               set_col_char_in_string(msa, msa->ss->col_tuples[i], j, 
                                      msa->ss->tuple_size, -k, 
                                      msa->alphabet[char_idx]);
@@ -2813,7 +2853,7 @@ void msa_missing_to_gaps(MSA *msa, int refseq) {
       for (j = 0; j < msa->length; j++) {
         if (msa->is_missing[(int)msa->seqs[i][j]]) {
           if (i == refseq - 1 && msa->seqs[i][j] == 'N') {
-            int char_idx = 4.0 * unif_rand();
+            int char_idx = (int)(4.0 * unif_rand());
             msa->seqs[i][j] = msa->alphabet[char_idx];
           }
           else
@@ -2843,7 +2883,7 @@ void msa_toupper(MSA *msa) {
 
   for (i = 0, j = 0; msa->alphabet[i] != '\0'; i++) {
     if (msa->alphabet[i] >= 'a' && msa->alphabet[i] <= 'z') {
-      char newc = toupper(msa->alphabet[i]);
+      char newc = (char)toupper(msa->alphabet[i]);
       msa->inv_alphabet[(int)msa->alphabet[i]] = -1; /* remove lower case */
       if (msa->inv_alphabet[(int)newc] < 0) {
         /* replace with new upper case version */
@@ -2866,14 +2906,14 @@ void msa_toupper(MSA *msa) {
         for (k = 0; k < msa->ss->tuple_size; k++) 
           set_col_char_in_string(msa, msa->ss->col_tuples[i], j, 
                                  msa->ss->tuple_size, -k, 
-                                 toupper(ss_get_char_tuple(msa, i, j, -k)));
+                                 (char)toupper(ss_get_char_tuple(msa, i, j, -k)));
     }
   }
   if (msa->seqs != NULL) {
     for (i = 0; i < msa->nseqs; i++) {
       checkInterrupt();
       for (j = 0; j < msa->length; j++) 
-        msa->seqs[i][j] = toupper(msa->seqs[i][j]);
+        msa->seqs[i][j] = (char)toupper(msa->seqs[i][j]);
     }
   }
 }
@@ -2968,8 +3008,9 @@ char **msa_translate(MSA *msa, int oneframe, int *frame) {
   char *tempseq = smalloc((msa->length/3+2) * sizeof(char));
   char **rv = smalloc(msa->nseqs * sizeof(char*));
   int seq, pos, i, codpos, numgap, numn, inv_alph[256];
-  char *alphabet="ACGT", *codon_mapping, cod[3], c;
+  char *alphabet="ACGT", *codon_mapping, cod[4], c;
 
+  cod[3]='\0';
   for (i = 0; i < 256; i++) inv_alph[i] = -1;
   for (i = 0; alphabet[i] != '\0'; i++) inv_alph[(int)alphabet[i]] = i;
   codon_mapping = get_codon_mapping(alphabet);
@@ -2982,13 +3023,25 @@ char **msa_translate(MSA *msa, int oneframe, int *frame) {
     for ( ; i < msa->length; i++) {
       c = msa_get_char(msa, seq, i);
       if (oneframe == 0 && c == '-') continue;
-      cod[codpos++] = toupper(c);
+      cod[codpos++] = (char)toupper(c);
       if (c == '-') numgap++;
       else if (inv_alph[(int)c] == -1) numn++;
       if (codpos == 3) {
 	if (numgap == 3) tempseq[pos++] = '-';
 	else if (numn > 0 || numgap > 0) tempseq[pos++] = '*';
-	else tempseq[pos++] = codon_mapping[tuple_index(cod, inv_alph, 4)];
+	else {
+	  /* int k;
+          printf("cod=%c%c%c\n", cod[0], cod[1], cod[2]);
+	  fflush(stdout);
+	  for (k=0; k < 3; k++) {
+	    printf("inv_alph[%i]=%i\n", k, inv_alph[cod[k]]);
+	    fflush(stdout);
+	  }
+	  printf("tuple_idx=%i\n", tuple_index(cod, inv_alph, 4));
+	  fflush(stdout);
+	  printf("codon_mapping=%c\n", codon_mapping[tuple_index(cod, inv_alph, 4)]);*/
+	  tempseq[pos++] = codon_mapping[tuple_index(cod, inv_alph, 4)];
+	}
 	codpos = numgap = numn = 0;
       }
     }

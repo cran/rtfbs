@@ -299,8 +299,19 @@ Matrix* read_subst_mat(FILE *F, char *alph);
     @param fname Full path to file
     @param mode Open mode i.e. w, r, r+, w+, etc.
     @result File descriptor 
+    @note Exits with error message if open unsuccessful
  */
-FILE* fopen_fname(const char *fname, char *mode);
+FILE* phast_fopen(const char *fname, const char *mode);
+
+/** Open a file by filename and get file descriptor.
+    @param fname Full path to file
+    @param mode Open mode i.e. w, r, r+, w+, etc.
+    @result File descriptor 
+ */
+FILE* phast_fopen_no_exit(const char *fname, const char *mode);
+
+
+void phast_fclose(FILE *f);
 #ifdef RPHAST
 #undef Rf_error
 #undef die
@@ -309,6 +320,13 @@ FILE* fopen_fname(const char *fname, char *mode);
 #define phast_warning Rf_warning
 #undef printf
 #define printf Rprintf
+#undef stdout
+#undef stderr
+extern FILE *rphast_stdout;
+extern FILE *rphast_stderr;
+#define stdout rphast_stdout
+#define stderr rphast_stderr
+
 /** Write text to file or R stdout/stderr.
     @param f File descriptor of file to write to OR stdout to write to R console OR stderr to write to R error console.
     @param format Format of the string to write like sprintf
@@ -406,6 +424,9 @@ void *smalloc(size_t size);
     @param size New size
 */
 void *srealloc(void *ptr, size_t size);
+
+void register_open_file(FILE *F);
+void unregister_open_file(FILE *F);
 
 #ifdef USE_PHAST_MEMORY_HANDLER
 /** Safe memory free

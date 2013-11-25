@@ -107,7 +107,7 @@ void ms_print_fasta(FILE *F, MS *ms) {
   for (i = 0; i < ms->nseqs; i++) {
     checkInterrupt();
     fprintf(F, ">%s\n", ms->names[i]);
-    seqLen = strlen(ms->seqs[i]);
+    seqLen = (int)strlen(ms->seqs[i]);
     for (j = 0; j < seqLen; j += OUTPUT_LINE_LEN) {
       checkInterruptN(j, 100);
       for (k = 0; k < OUTPUT_LINE_LEN && j + k < seqLen; k++) 
@@ -119,9 +119,9 @@ void ms_print_fasta(FILE *F, MS *ms) {
 
 ///////////////////////////////////////
 void ms_print_to_file(const char *filename, MS *ms) {
-  FILE *outfile = fopen_fname(filename, "w");
+  FILE *outfile = phast_fopen(filename, "w");
   ms_print_fasta(outfile, ms);
-  fclose(outfile);
+  phast_fclose(outfile);
 }
 
 
@@ -147,8 +147,7 @@ List *pwm_read(const char *filename) {
   pssm_re = str_re_new("^letter-probability matrix: alength= ([0-9]+) w= ([0-9]+)");
   motif_name_re = str_re_new("^MOTIF[[:space:]]+(.+?)[[:space:]].*");
   //open PWM file
-  if ( (F = fopen(filename, "r")) == NULL)
-    die("ERROR: Unable to open MEME file containing PWM \n");
+  F = phast_fopen(filename, "r");
   currBase = 0;
   nBases = -1;
   //For each line in the MEME file
@@ -195,7 +194,7 @@ List *pwm_read(const char *filename) {
     die("Premature end of PWM file\n");
   str_re_free(motif_name_re);
   str_re_free(pssm_re);
-  fclose(F);
+  phast_fclose(F);
   return result;
 }
 
@@ -224,8 +223,7 @@ MS *ms_read(const char *filename, const char *alphabet) {
   MS *ms;
   FILE * F;
 
-  if ( (F = fopen(filename, "r")) == NULL)
-	die("ERROR: Unable to open FASTA file \n");
+  F = phast_fopen(filename, "r");
 
   if (descrip_re == NULL) 
     descrip_re = str_re_new("[[:space:]]*>[[:space:]]*(.+)");
@@ -282,7 +280,7 @@ MS *ms_read(const char *filename, const char *alphabet) {
 	
     // scan chars and adjust if necessary 
     for (j = 0; j < s->length; j++) {
-      ms->seqs[i][j] = do_toupper ? toupper(s->chars[j]) : s->chars[j];
+      ms->seqs[i][j] = do_toupper ? (char)toupper(s->chars[j]) : s->chars[j];
       if (ms->seqs[i][j] == '.' && ms->inv_alphabet[(int)'.'] == -1) 
         ms->seqs[i][j] = ms->missing[0]; // interpret '.' as missing
       //   data; maybe no longer
@@ -300,7 +298,7 @@ MS *ms_read(const char *filename, const char *alphabet) {
   lst_free(seqs);
   lst_free(l);
   str_free(line);
-  fclose(F);
+  phast_fclose(F);
   return ms;
 }
 
@@ -321,14 +319,14 @@ Matrix *mm_build_helper(MS *inputMS, int norder, int pseudoCount, int considerRe
   
   vec_zero(freqs);
   
-  alph_size = strlen(inputMS->alphabet);
+  alph_size = (int)strlen(inputMS->alphabet);
   
   //Apply Pseudo-Counts
   vec_set_all(freqs, pseudoCount);
   
   //For each sequence
   for (j = 0; j < inputMS->nseqs; j++) { 
-    seqLen = strlen(inputMS->seqs[j]);
+    seqLen = (int)strlen(inputMS->seqs[j]);
     //For each site
     for (i = 0; i < seqLen; i++) { 
       checkInterruptN(i, 10000);
@@ -357,7 +355,7 @@ Matrix *mm_build_helper(MS *inputMS, int norder, int pseudoCount, int considerRe
       for (j = 0; j < inputMS->nseqs; j++) { 
         
         //For each site
-        for (i = strlen(inputMS->seqs[j]); i >= 0 ; i--) { 
+        for (i = (int)strlen(inputMS->seqs[j]); i >= 0 ; i--) { 
           checkInterruptN(i, 10000);
           ignore = 0;
           tup_idx = 0;

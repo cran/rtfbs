@@ -5,4 +5,6 @@
 	Bug fixes:
 	 Fixed problem where it couldn't score sequences the same length as the PWM
 	 Fixed problem where calc.fdr crashed when simSeqsScores has length 0
-	
+10-23-2013:  0.3 Added option to return posterior match scores
+	Optionally score.ms now returns a list() structure representing raw
+	match scores for each strand, and under the background model.

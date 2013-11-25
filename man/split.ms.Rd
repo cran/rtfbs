@@ -28,7 +28,7 @@
   parameter.
 }
 \seealso{
-  \code{\link{read.ms}}, \code{\link{read.feat}} for more
-  about Features object
+  \code{\link{read.ms}}, or read.feat from package rphast
+  for more about Features object
 }
 

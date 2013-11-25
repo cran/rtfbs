@@ -461,7 +461,8 @@ is.pointer.ms <- function(x) {
 #' @param f Numeric window size, or Features object used to determine where to split sequences
 #' @param drop Currently not used (for S3 compatibility)
 #' @param ... Currently not used (for S3 compatibility)
-#' @seealso \code{\link{read.ms}}, \code{\link{read.feat}} for more about
+#' @seealso \code{\link{read.ms}}, or read.feat from package rphast
+#' for more about
 #' Features object
 #' @return MS object, containing the split sequences
 #' @method split ms
@@ -471,7 +472,7 @@ split.ms <- function(x, f, drop=FALSE, ...) {
   check.arg(x, "x", "ms", null.OK=FALSE, max.length=Inf)
   
   if ((class(f)[1] == "data.frame") || (class(f)[1] == "feat"))
-    result <-.Call.rphast("rph_ms_split_gff", as.pointer.ms(x)$externalPtr, as.pointer.feat(f)$externalPtr)
+    result <-.Call.rphast("rph_ms_split_gff", as.pointer.ms(x)$externalPtr, rphast::as.pointer.feat(f)$externalPtr)
   else if (class(f)[1] == "numeric")
   {
     if (!is.wholenumber(f))
@@ -759,14 +760,15 @@ label.matrix <- function(mat, columnsOnly=FALSE) {
 #' If "best" search for binding sites in both directions, but for each N-mer, return
 #' the maximum score over either strand.
 #' If "+" look only on the forward strand, and if "-" look only on the reverse strand.
+#' @param return_posteriors If TRUE, will return a list structure.  Scores represent the motif 'match score', or the product of the probability of observing each base under the motif or background models.  Scores are returned under the motif model for all positions in the sequence, on both forward and reverse strands, and under the background model.  Note that strand and threshold options are both ignored. If FALSE, returns scores and locations for possible binding sites as a feature object.
 #' @note If a PWM file contains multiple PWMs, then read.pwm will return a list of
 #' PWMs.  This function takes a single PWM.
 #' @seealso \code{\link{read.ms} \link{split.ms} \link{groupByGC.ms} \link{build.mm} \link{read.pwm}}
 #' @return Scores and locations for possible binding sites returned as a
-#' feature object.
+#' feature object.  Optionally, if return_posteriors is TRUE, will return a list structure (see above).
 #' @export
 #' @example tests/score_ms.R
-score.ms <- function(ms, pwm, mm, conservative=TRUE, threshold=0, strand="best") {
+score.ms <- function(ms, pwm, mm, conservative=TRUE, threshold=0, strand="best", return_posteriors=FALSE) {
   check.arg(ms, "ms", "ms", null.OK=FALSE, max.length=Inf)
   check.arg(pwm, "pwm", "matrix", null.OK=FALSE, max.length=Inf)
   check.arg(mm, "mm", "list", null.OK=FALSE, max.length=Inf)
@@ -782,13 +784,17 @@ score.ms <- function(ms, pwm, mm, conservative=TRUE, threshold=0, strand="best")
   mtemp <- mm;
   if (class(mm) == "matrix")
     mtemp <- list(mtemp)
-    
-  x <- .Call.rphast("rph_ms_score", msPointer$externalPtr, pwm, mtemp, length(mtemp)-1, conservative, threshold, strand);
-  x <- rphast.simplify.list(x);	
-  x$feature <- rep("TFBS", length(x[[1]]))
-  x$src <- rep("rtfbs", length(x[[1]]))
-  x
-  
+
+  if(return_posteriors) {
+    x <- .Call.rphast("rph_ms_posterior", msPointer$externalPtr, pwm, mtemp, length(mtemp)-1, conservative)
+  }
+  else {
+    x <- .Call.rphast("rph_ms_score", msPointer$externalPtr, pwm, mtemp, length(mtemp)-1, conservative, threshold, strand);
+    x <- rphast.simplify.list(x);	
+    x$feature <- rep("TFBS", length(x[[1]]))
+    x$src <- rep("rtfbs", length(x[[1]]))
+  }
+  return(x)
 }
 
 #' Simulate a single sequence based from a Markov Model. 
@@ -796,7 +802,7 @@ score.ms <- function(ms, pwm, mm, conservative=TRUE, threshold=0, strand="best")
 #' background rates and False Discovery Rates.
 #' @title Generate sequence from Markov Model
 #' @param object Markov Model \code{\link{build.mm}}
-#' @param nsim Length of the sequence to simulate
+#' @param nsim Length of the sequence to simulate.  Can be a vector, in which case multiple sequences of the specified length will be simulated.
 #' @param seed A random number seed.  Either \code{NULL} (the default;
 #' do not re-seed random  number generator), or an integer to be sent to
 #' set.seed.
@@ -813,13 +819,13 @@ score.ms <- function(ms, pwm, mm, conservative=TRUE, threshold=0, strand="best")
 #' @example tests/simulate_ms.R
 simulate.ms <- function(object, nsim, seed=NULL, pointer.only=FALSE, ...) {
   check.arg(object, "object", "list", null.OK=FALSE, max.length=Inf);
-  check.arg(nsim, "length", "numeric", null.OK=FALSE)
+#  check.arg(nsim, "length", "numeric", null.OK=FALSE)
   
   if (!is.null(seed)) set.seed(seed)
   mtemp <- object
   if (class(object) == "matrix")
     mtemp <- list(mtemp);
-  x <- .Call.rphast("rph_ms_simulate", mmP=mtemp, length(mtemp)-1, ncol(mtemp[[1]]), nsim);
+  x <- .Call.rphast("rph_ms_simulate", mmP=mtemp, length(mtemp)-1, ncol(mtemp[[1]]), as.integer(nsim));
   x <- rphast.simplify.list(x);
   attr(x, "class") <- c("ms", "list")
   if(!pointer.only) x <- from.pointer.ms(x)

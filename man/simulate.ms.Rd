@@ -8,7 +8,9 @@
 \arguments{
   \item{object}{Markov Model \code{\link{build.mm}}}
 
-  \item{nsim}{Length of the sequence to simulate}
+  \item{nsim}{Length of the sequence to simulate.  Can be a
+  vector, in which case multiple sequences of the specified
+  length will be simulated.}
 
   \item{seed}{A random number seed.  Either \code{NULL}
   (the default; do not re-seed random number generator), or

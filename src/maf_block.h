@@ -30,10 +30,10 @@ typedef struct {
   String *seq;  /**< Sequence data of sub block */
   String *src,   /**< Source of sequence data */
     *specName;  /**< Part of src before the first '.' */
-  int start;   /**< Starting column */
+  long start;   /**< Starting column */
   int size;    /**< Length of the block */
   char strand; /**< Type of strand of the sequence*/
-  int srcSize; /**< Size of the source */
+  long srcSize; /**< Size of the source */
   int numLine;  /**< Number of lines corresponding to this 
 			species in this block. */
   char lineType[4];  /**< type of line i, either 's', 'q', 'i', 'e' */
@@ -169,12 +169,21 @@ void mafBlock_strip_eLines(MafBlock *block);
 */
 void mafBlock_strip_ieLines(MafBlock *block);
 
+/** Mask a region of the alignment.
+    @param block MafBlock to mask
+    @param mask_feats features defining regions of alignment to mask
+    @param speclist A list of character vectors identifying species to mask
+ */
+void mafBlock_mask_region(MafBlock *block, GFF_Set *mask_feats, List *speclist);
+
 /**  Threshold all bases based on quality score.
      Change all bases with quality score <= cutoff to N
      @param block Maf Block to threshold
      @param cutoff Threshold value; each base's quality score must be greater than cutoff, otherwise it is changed to 'N'
+     @param outfile File to output coordinates of masked bases to, if not NULL.  Coordinates will be relative to refseq, and the final column gives the name of the species which was masked.
+     @note If outfile is not null, note that masked bases which align to a gap in refseq may not be indicated in the outfile.
 */
-void mafBlock_mask_bases(MafBlock *block, int cutoff);
+void mafBlock_mask_bases(MafBlock *block, int cutoff, FILE *outfile);
 
 /** \} \name MAF block get info functions 
    \{ */
@@ -190,7 +199,7 @@ String *mafBlock_get_refSpec(MafBlock *block);
     @param specName Name of the species to get starting index of
     @result Starting index of species, OR -1 if species does not exist in given$
 */
-int mafBlock_get_start(MafBlock *block, String *specName);
+long mafBlock_get_start(MafBlock *block, String *specName);
 
 /** Get number of bases (non-gaps) in alignment for a given species. 
     @param block Maf Block containing species specName sequence data

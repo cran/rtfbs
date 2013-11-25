@@ -9,7 +9,7 @@ R Transcription Factor Binding Site identification tool
 RTFBS identifies and scores possible Transcription Factor
     Binding Sites and allows for FDR analysis and pruning.  It supports
     splitting of sequences based on size or a specified GFF, grouping
-    by GC content, and specification of Markov model order.  The heavy
+    by G+C content, and specification of Markov model order.  The heavy
     lifting is done in C while all results are made available via R.
 }
 \details{
@@ -18,16 +18,17 @@ Copyright: \tab The code in src/pcre is Copyright (c) 1997-2010 University\cr
 \tab of Cambridge.  All other code is Copyright (c) 2002-2011 University\cr
 \tab of California, Cornell University.\cr
 Package: \tab rtfbs\cr
-License: \tab BSD\cr
-Version: \tab 0.2\cr
+License: \tab BSD_3_clause + file LICENSE\cr
+Version: \tab 0.3\cr
 URL: \tab http://compgen.bscb.cornell.edu/rtfbs\cr
-Date: \tab 2012-03-29\cr
-Depends: \tab \cr
-\tab stats,\cr
+Date: \tab 2013-11-25\cr
+Imports: \tab \cr
 \tab rphast\cr
+Depends: \tab \cr
+\tab stats\cr
 Collate: \tab \cr
 \tab 'tfbs.R'\cr
-Built: \tab R 2.14.2; x86_64-pc-linux-gnu; 2012-03-29 18:08:28 UTC; unix\cr
+Built: \tab R 3.0.2; x86_64-unknown-linux-gnu; 2013-12-03 21:04:48 UTC; unix\cr
 }
 
 Index:

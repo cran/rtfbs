@@ -72,7 +72,7 @@ void ss_from_msas(MSA *msa, int tuple_size, int store_order,
                   Hashtable *existing_hash,
                   int idx_offset, int non_overlapping) {
   int i, j, do_cats, idx, upper_bound;
-  long int max_tuples;
+  int max_tuples;
   MSA_SS *main_ss, *source_ss = NULL;
   Hashtable *tuple_hash = NULL;
   int *do_cat_number = NULL;
@@ -117,18 +117,21 @@ void ss_from_msas(MSA *msa, int tuple_size, int store_order,
       upper_bound = source_msa->ss->ntuples;
     else if (source_msa != NULL) upper_bound = source_msa->length;
     else upper_bound = min(msa->length, MAX_NTUPLE_ALLOC);
-    max_tuples = min(pow(strlen(msa->alphabet)+ strlen(msa->missing) + 1, 
+    max_tuples = min((int)pow(strlen(msa->alphabet)+ (int)strlen(msa->missing) + 1, 
                          msa->nseqs * tuple_size),
                      upper_bound);
+    if (max_tuples < 0) max_tuples = upper_bound;  //protect against overflow
     ss_new(msa, tuple_size, max_tuples, do_cats, store_order);
     if (source_msa != NULL) msa->length = source_msa->length;
   }
   else {  //if (idx_offset < 0) {    
+    // msa->ss != NULL so  we know source_msa != NULL
     /* if storing order based on source
                                    alignments and offset, then assume
                                    proper preallocation; otherwise
                                    (this case), realloc to accommodate
                                    new source msa */
+    //    int newlen = effective_offset + msa->length + source_msa->length;
     int newlen = effective_offset + source_msa->length;
     msa_realloc(msa, newlen, newlen+100000, 
 		do_cats, store_order);
@@ -136,15 +139,16 @@ void ss_from_msas(MSA *msa, int tuple_size, int store_order,
       upper_bound = msa->ss->ntuples + source_msa->ss->ntuples;
     else
       upper_bound = msa->ss->ntuples + source_msa->length;
-    max_tuples = min(pow(strlen(msa->alphabet) + strlen(msa->missing) + 1, 
+    max_tuples = min((int)pow(strlen(msa->alphabet) + (int)strlen(msa->missing) + 1, 
                          msa->nseqs * tuple_size),
                      upper_bound);
+    if (max_tuples < 0) max_tuples = upper_bound;
     ss_realloc(msa, tuple_size, max_tuples, do_cats, store_order);
   }
 
 
   main_ss = msa->ss;
-  tuple_hash = existing_hash != NULL ? existing_hash : hsh_new(max_tuples/3);
+  tuple_hash = existing_hash != NULL ? existing_hash : hsh_new((int)((double)max_tuples/3));
 
   if (source_msa != NULL && source_msa->ss != NULL)
     source_ss = source_msa->ss;
@@ -334,7 +338,7 @@ void ss_realloc(MSA *msa, int tuple_size, int max_ntuples, int do_cats,
    Also, this function assumes all msas have same names, nseqs, and
    alphabet (it uses those of the first) */
 PooledMSA *ss_pooled_from_msas(List *source_msas, int tuple_size, int ncats, 
-                               List *cats_to_do) {
+                               List *cats_to_do, int non_overlapping) {
   int i, j;
   MSA *rep_msa;
   PooledMSA *pmsa = (PooledMSA*)smalloc(sizeof(PooledMSA));
@@ -364,11 +368,11 @@ PooledMSA *ss_pooled_from_msas(List *source_msas, int tuple_size, int ncats,
     if (smsa->nseqs != rep_msa->nseqs)
       die("ERROR: All MSA's must contain the same number of species! The offending sequence is: %s\n", pmsa->pooled_msa->names[i]);
     if (smsa->ss == NULL)
-      ss_from_msas(smsa, tuple_size, 1, cats_to_do, NULL, NULL, -1, 0);
+      ss_from_msas(smsa, tuple_size, 1, cats_to_do, NULL, NULL, -1, non_overlapping);
                                 /* assume we want ordered suff stats
                                    for source alignments */
     ss_from_msas(pmsa->pooled_msa, tuple_size, 0, cats_to_do, 
-                 smsa, tuple_hash, -1, 0);
+                 smsa, tuple_hash, -1, non_overlapping);
     pmsa->lens[i] = smsa->length;
 
     /* keep around a mapping from the tuple indices of each source
@@ -441,7 +445,7 @@ MSA *ss_aggregate_from_files(List *fnames,
     checkInterrupt();
     fprintf(stderr, "Reading alignment from %s ...\n", fname->chars);
 
-    F = fopen_fname(fname->chars, "r");
+    F = phast_fopen(fname->chars, "r");
     format = msa_format_for_content(F, 1);
     if (format == MAF)
       source_msa = maf_read_cats(F, NULL, tuple_size, NULL, NULL, NULL, cycle_size, 
@@ -450,7 +454,7 @@ MSA *ss_aggregate_from_files(List *fnames,
                                    overlapping blocks */
     else 
       source_msa = msa_new_from_file_define_format(F, format, NULL);
-    fclose(F);
+    phast_fclose(F);
 
     if (source_msa->seqs == NULL && 
         source_msa->ss->tuple_size != tuple_size) 
@@ -495,7 +499,7 @@ char *ss_get_one_seq(MSA *msa, int spec) {
       checkInterruptN(i, 1000);
       c = col_string_to_char(msa, msa->ss->col_tuples[i], spec,
 			     msa->ss->tuple_size, 0);
-      if (col + msa->ss->counts[i] > msa->length) {  
+      while (col + msa->ss->counts[i] > msa->length) {  
 	//this shouldn't happen, but the length isn't necessarily initialized
 	//when SS is created
 	msa->length *= 2;
@@ -563,8 +567,7 @@ void msa_read_AXT(MSA *msa, List *axt_fnames) {
     msa->seqs[i+1][msa->length] = '\0';
     strcpy(msa->names[i+1], axtfname->chars); /* ?? */
 
-    if ((F = fopen(axtfname->chars, "r")) == NULL) 
-      die("ERROR: unable to open %s\n", axtfname->chars);
+    F = phast_fopen(axtfname->chars, "r");
 
     line_no=0;
     /* FIXME: need to deal with strand!  Also, soft masking ... */
@@ -1061,7 +1064,7 @@ void ss_reverse_compl(MSA *msa) {
   }
 
   /* reverse complement column tuples; counts remain unaltered */
-  midpt = ceil(ss->tuple_size/2.0);
+  midpt = (int)ceil(ss->tuple_size/2.0);
   for (i = 0; i < ss->ntuples; i++) {
     checkInterruptN(i, 1000);
     for (j = 0; j < msa->nseqs; j++) {
@@ -1086,7 +1089,7 @@ void ss_reverse_compl(MSA *msa) {
   }
 
   /* reverse order */
-  midpt = ceil(msa->length/2.0);
+  midpt = (int)ceil(msa->length/2.0);
   idx1 = ss->tuple_size - 1; /* note offset due to edge effect */
   idx2 = msa->length - 1;
   for (; idx1 < idx2; idx1++, idx2--) {

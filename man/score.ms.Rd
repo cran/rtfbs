@@ -3,7 +3,7 @@
 \title{Score sequences against a PWM}
 \usage{
   score.ms(ms, pwm, mm, conservative = TRUE, threshold = 0,
-    strand = "best")
+    strand = "best", return_posteriors = FALSE)
 }
 \arguments{
   \item{ms}{MS object containing at least one sequence}
@@ -30,10 +30,22 @@
   maximum score over either strand. If "+" look only on the
   forward strand, and if "-" look only on the reverse
   strand.}
+
+  \item{return_posteriors}{If TRUE, will return a list
+  structure.  Scores represent the motif 'match score', or
+  the product of the probability of observing each base
+  under the motif or background models.  Scores are
+  returned under the motif model for all positions in the
+  sequence, on both forward and reverse strands, and under
+  the background model.  Note that strand and threshold
+  options are both ignored. If FALSE, returns scores and
+  locations for possible binding sites as a feature
+  object.}
 }
 \value{
   Scores and locations for possible binding sites returned
-  as a feature object.
+  as a feature object.  Optionally, if return_posteriors is
+  TRUE, will return a list structure (see above).
 }
 \description{
   Score all potential binding sites in an MS object. If a

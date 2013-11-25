@@ -32,7 +32,6 @@ char *dtoa(double num);
     @param seqs 2D array, one entry per sequence containing the bases.
     @param names 2D array, one entry per sequence containing name
     @param nseqs number of sequences in this MS
-    @param lengths 2D array, one entry per sequence containing length of sequence
     @param alphabet characters thare are valid bases
     @param rangeLow Lower bound of %GC content this bin will hold (between 0 and 1)
     @param rangeHigh Upper bound of %GC content this bin will hold (between 0 and 1) 
@@ -120,6 +119,13 @@ void ms_print_to_file(const char *filename, MS *ms);
  */
 Vector *ms_gc_content(MS *ms);
 
+/* Scores a markov model on a specific sequence.
+   @param seqData Sequence being scored
+   @param base Current base for testing
+   @param MarkovMatrices Markov Model source
+   @param conservative Whether to treat regions containing 'N' as possible binding sites
+ */
+double calcMMscore(char *seqData, int base, List *MarkovMatrices, int conservative);
 
 /** Scores sequences for matches to motif represented as PWM.
     @param seqName Name of the sequence being scored

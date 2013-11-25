@@ -17,6 +17,7 @@
 #include <ctype.h>
 #include <bed.h>
 #include <genepred.h>
+#include <wig.h>
 
 /* Read a set of features from a file and return a newly allocated
    GFF_Set object.  Function reads until end-of-file is encountered or
@@ -30,8 +31,7 @@
    attribute is the empty string ('').  Columns must be separated by
    tabs.  */
 GFF_Set* gff_read_set(FILE *F) {
-  int start, end, frame, score_is_null, lineno, done_with_header = FALSE,
-    seekable = TRUE;
+  int start, end, frame, score_is_null, lineno, isGFF = TRUE;
   double score;
   char strand;
   String *attr, *line;
@@ -39,72 +39,58 @@ GFF_Set* gff_read_set(FILE *F) {
   GFF_Set *set;
   List *l, *substrs;
   static Regex *spec_comment_re = NULL;
-  fpos_t pos;
 
   line = str_new(STR_LONG_LEN);
   set = gff_new_set();
   l = lst_new_ptr(GFF_NCOLS);
   substrs = lst_new_ptr(4);
 
-  /* mark start position; used for autodetection of bed and genepred formats */
-  if (fgetpos(F, &pos) != 0) seekable = FALSE;
 
-  lineno = 0;
-  while (str_readline(line, F) != EOF) {
-    checkInterruptN(lineno, 1000);
+  lineno=0;
+  while (str_peek_next_line(line, F) != EOF) {
     lineno++;
-
     str_double_trim(line);
-    if (line->length == 0) continue;
 
-    if (!done_with_header && str_starts_with_charstr(line, "##")) {
+    if (str_starts_with_charstr(line, "##")) {
       if (spec_comment_re == NULL)
-        spec_comment_re = str_re_new("^[[:space:]]*##[[:space:]]*([^[:space:]]+)[[:space:]]+([^[:space:]]+)([[:space:]]+([^[:space:]]+))?");
- 
+	spec_comment_re = str_re_new("^[[:space:]]*##[[:space:]]*([^[:space:]]+)[[:space:]]+([^[:space:]]+)([[:space:]]+([^[:space:]]+))?");
       if (str_re_match(line, spec_comment_re, substrs, 4) >= 0) {
-        String *tag, *val1, *val2;
-        tag = (String*)lst_get_ptr(substrs, 1);
-        val1 = (String*)lst_get_ptr(substrs, 2);
-        val2 =  lst_size(substrs) > 4 ? (String*)lst_get_ptr(substrs, 4) : NULL;
-        
-        if (str_equals_nocase_charstr(tag, GFF_VERSION_TAG))
-          str_cpy(set->gff_version, val1);
-        else if (str_equals_nocase_charstr(tag, GFF_SOURCE_VERSION_TAG) && 
-                 val2 != NULL) {
-          str_cpy(set->source, val1);
-          str_cpy(set->source_version, val2); 
-        }
-        else if (str_equals_nocase_charstr(tag, GFF_DATE_TAG))
-          str_cpy(set->date, val1);
+	String *tag, *val1, *val2;
+	tag = (String*)lst_get_ptr(substrs, 1);
+	val1 = (String*)lst_get_ptr(substrs, 2);
+	val2 =  lst_size(substrs) > 4 ? (String*)lst_get_ptr(substrs, 4) : NULL;
+	
+	if (str_equals_nocase_charstr(tag, GFF_VERSION_TAG))
+	  str_cpy(set->gff_version, val1);
+	else if (str_equals_nocase_charstr(tag, GFF_SOURCE_VERSION_TAG) && 
+		 val2 != NULL) {
+	  str_cpy(set->source, val1);
+	  str_cpy(set->source_version, val2); 
+	}
+	else if (str_equals_nocase_charstr(tag, GFF_DATE_TAG))
+	  str_cpy(set->date, val1);
       }
       lst_free_strings(substrs);
-
+    }
+    if (line->length == 0 || str_starts_with_charstr(line, "#")) {
+      str_readline(line, F);
       continue;
     }
 
-    else if (line->chars[0] == '#') continue; /* just skip ordinary comments */
-    
-    done_with_header = 1;
-
-    str_split(line, "\t", l);
-
-    /* if first record, check to see if the file's a BED or a
-       genepred.  If there are 3-8 or 12 columns, and if the 2nd and
+    // first non-comment line; get format and get out of this loop
+    /* check to see if the file's a BED or a
+       genepred or a wig.  If there are 3-8 or 12 columns, and if the 2nd and
        3rd columns are integers, then we'll try reading it as a BED.
        If >=10 columns and cols 4-7 are integers, we'll try reading it
-       as a genepred */
-    if (lst_size(set->features) == 0) {
-      if (((lst_size(l) >= 3 && lst_size(l) <= 8) || lst_size(l) == 12) && 
-          str_as_int(lst_get_ptr(l, 1), &start) == 0 && 
-          str_as_int(lst_get_ptr(l, 2), &end) == 0) {
-        if (!seekable) 
-          die("ERROR: Looks like BED format but can't rewind (non-seekable stream).\n");
-        fsetpos(F, &pos);
-        gff_read_from_bed(set, F);
-	lst_free_strings(l);
-        break;
-      }
-      else if ((lst_size(l) >= 10 && 
+       as a genepred.  If starts with fixedStep or variableStep, check
+       for other wig arguments and try reading as wig.
+    */
+    str_split(line, "\t", l);
+    if (((lst_size(l) >= 3 && lst_size(l) <= 8) || lst_size(l)==12) &&
+	str_as_int(lst_get_ptr(l, 1), &start)==0 &&
+	str_as_int(lst_get_ptr(l, 2), &end)==0) {
+      gff_read_from_bed(set, F);
+    } else if ((lst_size(l) >= 10 && 
 		str_as_int(lst_get_ptr(l, 3), &start) == 0 && 
 		str_as_int(lst_get_ptr(l, 4), &end) == 0 &&
 		str_as_int(lst_get_ptr(l, 5), &start) == 0 &&
@@ -115,77 +101,94 @@ GFF_Set* gff_read_set(FILE *F) {
 		str_as_int(lst_get_ptr(l, 5), &start) == 0 &&
 		str_as_int(lst_get_ptr(l, 6), &start) == 0 &&
 		str_as_int(lst_get_ptr(l, 7), &start) == 0)) {
-	if (!seekable) 
-          die("ERROR: Looks like genepred format but can't rewind (non-seekable stream).\n");
-        fsetpos(F, &pos);
-        gff_read_from_genepred(set, F);
-	lst_free_strings(l);
-        break;
-      }
+      isGFF=FALSE;
+      gff_read_from_genepred(set, F);
+      break;
     }
-
-    /* set defaults for optional fields */
-    strand = '.';
-    frame = GFF_NULL_FRAME;
-    score_is_null = 1;            
-
-    if (lst_size(l) < GFF_MIN_NCOLS) 
-      die("ERROR at line %d (gff_read_set): minimum of %d columns are required.\n", 
-          lineno, GFF_MIN_NCOLS);
-  
-    if (str_as_int(lst_get_ptr(l, 3), &start) != 0) 
-      die("ERROR at line %d (gff_read_set): non-numeric 'start' value ('%s').\n", 
-          lineno, ((String*)lst_get_ptr(l, 3))->chars);
-
-    if (str_as_int((String*)lst_get_ptr(l, 4), &end) != 0) 
-      die("ERROR at line %d (gff_read_set): non-numeric 'end' value ('%s').\n", 
-          lineno, ((String*)lst_get_ptr(l, 4))->chars);
-
-    if (lst_size(l) > 5) {
-      String *score_str = (String*)lst_get_ptr(l, 5);
-      if (! str_equals_charstr(score_str, ".")) {
-        if (str_as_dbl(score_str, &score) != 0) 
-          die( "ERROR at line %d (gff_read_set): non-numeric and non-null 'score' value ('%s').\n", 
-                  lineno, score_str->chars);
-        else 
-          score_is_null = 0;
-      }
-    }
-
-    strand = '.';
-    if (lst_size(l) > 6) {
-      String *tmp = (String*)lst_get_ptr(l, 6);
-      if (tmp->length == 0 || tmp->length > 1 || 
-          (tmp->chars[0] != '+' && tmp->chars[0] != '-' && 
-           tmp->chars[0] != '.')) 
-        die("ERROR at line %d: illegal 'strand' ('%s').\n", 
-            lineno, tmp->chars);
-      strand = tmp->chars[0];
-    }
-
-    frame = GFF_NULL_FRAME;
-    if (lst_size(l) > 7) {
-      String *tmp = (String*)lst_get_ptr(l, 7);
-      if (! str_equals_charstr(tmp, ".") != 0) {
-        if (str_as_int(tmp, &frame) != 0 || frame < 0 || frame > 2) 
-          die("ERROR at line %d: illegal 'frame' ('%s').\n", 
-              lineno, tmp->chars);
-        frame = (3 - frame) % 3; /* convert to internal
-                                    representation */
-      }
-    }
-
-    if (lst_size(l) > 8) 
-      attr = str_dup(lst_get_ptr(l, 8));
-    else attr = str_new(0);
-    
-    feat = gff_new_feature(str_dup(lst_get_ptr(l, 0)), 
-                           str_dup(lst_get_ptr(l, 1)),
-                           str_dup(lst_get_ptr(l, 2)), start, end, score, 
-                           strand, frame, attr, score_is_null);
-
-    lst_push_ptr(set->features, feat);
     lst_free_strings(l);
+    if (isGFF && wig_parse_header(line, NULL, NULL, NULL, NULL, NULL)) {
+      gff_free_set(set);
+      set = gff_read_wig(F);
+      isGFF=FALSE;
+    }
+    lineno--;
+    break;  //get out of loop since we have seen a non-comment line
+  }
+
+  if (isGFF) {
+    while (str_readline(line, F) != EOF) {
+      checkInterruptN(lineno, 1000);
+      lineno++;
+      
+      str_double_trim(line);
+      if (line->length == 0) continue;
+      if (line->chars[0] == '#') continue; /* just skip ordinary comments */
+      
+      str_split(line, "\t", l);
+      
+      /* set defaults for optional fields */
+      strand = '.';
+      frame = GFF_NULL_FRAME;
+      score_is_null = 1;            
+      
+      if (lst_size(l) < GFF_MIN_NCOLS) 
+	die("ERROR at line %d (gff_read_set): minimum of %d columns are required.\n", 
+	    lineno, GFF_MIN_NCOLS);
+      
+      if (str_as_int(lst_get_ptr(l, 3), &start) != 0) 
+	die("ERROR at line %d (gff_read_set): non-numeric 'start' value ('%s').\n", 
+	    lineno, ((String*)lst_get_ptr(l, 3))->chars);
+      
+      if (str_as_int((String*)lst_get_ptr(l, 4), &end) != 0) 
+	die("ERROR at line %d (gff_read_set): non-numeric 'end' value ('%s').\n", 
+	    lineno, ((String*)lst_get_ptr(l, 4))->chars);
+      
+      if (lst_size(l) > 5) {
+	String *score_str = (String*)lst_get_ptr(l, 5);
+	if (! str_equals_charstr(score_str, ".")) {
+	  if (str_as_dbl(score_str, &score) != 0) 
+	    die( "ERROR at line %d (gff_read_set): non-numeric and non-null 'score' value ('%s').\n", 
+		 lineno, score_str->chars);
+	  else 
+	    score_is_null = 0;
+	}
+      }
+      
+      strand = '.';
+      if (lst_size(l) > 6) {
+	String *tmp = (String*)lst_get_ptr(l, 6);
+	if (tmp->length == 0 || tmp->length > 1 || 
+	    (tmp->chars[0] != '+' && tmp->chars[0] != '-' && 
+	     tmp->chars[0] != '.')) 
+	  die("ERROR at line %d: illegal 'strand' ('%s').\n", 
+	      lineno, tmp->chars);
+	strand = tmp->chars[0];
+      }
+      
+      frame = GFF_NULL_FRAME;
+      if (lst_size(l) > 7) {
+	String *tmp = (String*)lst_get_ptr(l, 7);
+	if (! str_equals_charstr(tmp, ".") != 0) {
+	  if (str_as_int(tmp, &frame) != 0 || frame < 0 || frame > 2) 
+	    die("ERROR at line %d: illegal 'frame' ('%s').\n", 
+		lineno, tmp->chars);
+	  frame = (3 - frame) % 3; /* convert to internal
+				      representation */
+	}
+      }
+      
+      if (lst_size(l) > 8) 
+	attr = str_dup(lst_get_ptr(l, 8));
+      else attr = str_new(0);
+      
+      feat = gff_new_feature(str_dup(lst_get_ptr(l, 0)), 
+			     str_dup(lst_get_ptr(l, 1)),
+			     str_dup(lst_get_ptr(l, 2)), start, end, score, 
+			     strand, frame, attr, score_is_null);
+      
+      lst_push_ptr(set->features, feat);
+      lst_free_strings(l);
+    }
   }
 
   str_free(line);
@@ -670,7 +673,7 @@ void gff_group(GFF_Set *set, char *tag) {
   Hashtable *hash = hsh_new(est_no_groups);
   String *nullstr = str_new(1); /* empty string represents missing or
                                    null value for tag */
-  int i, taglen = strlen(tag);
+  int i, taglen = (int)strlen(tag);
 
   if (set->groups != NULL)
     gff_ungroup(set);
@@ -1489,7 +1492,7 @@ void gff_flatten_within_groups(GFF_Set *feats) {
 
   for (g = 0; g < lst_size(feats->groups); g++) {
     group = lst_get_ptr(feats->groups, g);
-    if (lst_size(group->features) <= 1) continue;
+    if (lst_size(group->features) == 0 ) continue;
     group_keepers = lst_new_ptr(lst_size(group->features));
     last = lst_get_ptr(group->features, 0);
     lst_push_ptr(keepers, last);
@@ -1727,23 +1730,24 @@ GFF_Set *gff_overlap_gff(GFF_Set *gff, GFF_Set *filter_gff, int numbaseOverlap,
     are not merged).
     If numbits is not null, compute the coverage of the gff.
  */
-int gff_flatten_mergeAll(GFF_Set *gff) {
+long gff_flatten_mergeAll(GFF_Set *gff) {
   GFF_Feature *last, *this;
-  int i, j, numbits=0;
+  int i, j;
+  long numbits=0;
   List *newfeats = lst_new_ptr(lst_size(gff->features));
   gff_group_by_seqname(gff);
   gff_sort_within_groups(gff);
   for (i=0; i<lst_size(gff->groups); i++) {
     GFF_FeatureGroup *group = lst_get_ptr(gff->groups, i);
     last = lst_get_ptr(group->features, 0);
-    numbits += (last->end - last->start + 1);
+    numbits += (long)(last->end - last->start + 1);
     lst_push_ptr(newfeats, last);   //always keep first feature
     for (j=1; j<lst_size(group->features); j++) {
       checkInterruptN(j, 1000);
       this = lst_get_ptr(group->features, j);
       if (this->start <= last->end) {  //merge with previous
 	if (last->end < this->end) {
-	  numbits += (this->end - last->end);
+	  numbits += (long)(this->end - last->end);
 	  last->end = this->end;
 	}
 	if (!str_equals(last->source, this->source))
@@ -1760,7 +1764,7 @@ int gff_flatten_mergeAll(GFF_Set *gff) {
 	gff_free_feature(this);
       } else {  //no overlap
 	last = this;
-	numbits += (this->end - this->start + 1);
+	numbits += (long)(this->end - this->start + 1);
 	lst_push_ptr(newfeats, this);
       }
     }
@@ -1844,12 +1848,17 @@ GFF_Set *gff_inverse(GFF_Set *gff, GFF_Set *region0) {
       if (currEnd >= regionStart)
 	regionStart = currEnd + 1;
     }
-    if (regionStart != -1 && regionStart <= regionEnd) {
+    while (regionStart != -1 && regionStart <= regionEnd) {
       newfeat = gff_new_feature_copy_chars(regionFeat->seqname->chars,
 					   "gff_inverse", "inverse feat",
 					   regionStart, regionEnd, 0, '.',
 					   GFF_NULL_FRAME, ".", TRUE);
       lst_push_ptr(notGff->features, newfeat);
+      regionIdx++;
+      if (regionIdx >= lst_size(regionG->features)) break;
+      regionFeat = lst_get_ptr(regionG->features, regionIdx);
+      regionStart = regionFeat->start;
+      regionEnd = regionFeat->end;
     }
   }
   gff_free_set(region);
@@ -1899,3 +1908,31 @@ GFF_Set *gff_split(GFF_Set *gff, int *maxlen, int nmaxlen, int drop,
   }
   return newgff;
 }
+
+//create GFF_Set by thresholding an array of scores.
+//firstIdx should be 1-based coordinate
+//set feature score to sum of scores in each element
+GFF_Set *gff_from_wig_threshold(char *seqname, int firstIdx, 
+				double *scores, int numscore, 
+				double threshold, char *src, char *featureName) {
+  GFF_Set *rv=gff_new_set();
+  GFF_Feature *feat=NULL;
+  int i;
+  for (i=0; i < numscore; i++) {
+    if (scores[i] > threshold) {
+      if (feat == NULL) {
+	feat = gff_new_feature_copy_chars(seqname, 
+			       src == NULL ? "wig_threshold" : src,
+			       featureName == NULL ? "threshold_element" : featureName,
+			       i + firstIdx, i + firstIdx, 
+			       0, '.', GFF_NULL_FRAME,".", 0);
+	lst_push_ptr(rv->features, feat);
+      }
+      feat->end = i + firstIdx;
+      feat->score += scores[i];
+    } else feat = NULL;
+  }
+  return rv;
+}
+
+	

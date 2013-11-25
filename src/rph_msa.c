@@ -192,7 +192,7 @@ SEXP rph_msa_reduce_to_4d(SEXP msaP, SEXP gffP) {
       f->start -= msa->idx_offset;
       f->end -= msa->idx_offset;
     }
-    msa_map_gff_coords(msa, gff, -1, 0, 0, NULL);
+    msa_map_gff_coords(msa, gff, -1, 0, 0);
   }
   msa_label_categories(msa, gff, cm);
   msa_strip_gaps(msa, msa_get_seq_idx(msa, fourD_refseq->chars)+1);
@@ -227,7 +227,7 @@ SEXP rph_msa_extract_feature(SEXP msaP, SEXP gffP) {
       f->end -= msa->idx_offset;
     }
   }
-  msa_map_gff_coords(msa, gff, -1, 0, 0, NULL);
+  msa_map_gff_coords(msa, gff, -1, 0, 0);
   msa_label_categories(msa, gff, cm);
 
   if (msa->ss != NULL) {
@@ -279,10 +279,10 @@ SEXP rph_msa_format_for_suffix(SEXP filenameP) {
 
 
 SEXP rph_msa_format_for_content(SEXP filenameP) {
-  FILE *infile = fopen_fname(CHARACTER_VALUE(filenameP), "r");
+  FILE *infile = phast_fopen(CHARACTER_VALUE(filenameP), "r");
   msa_format_type t = msa_format_for_content(infile, 0);
   SEXP result;
-  fclose(infile);
+  phast_fclose(infile);
   PROTECT(result = NEW_CHARACTER(1));
   SET_STRING_ELT(result, 0, mkChar(msa_format_to_str(t)));
   UNPROTECT(1);
@@ -290,6 +290,9 @@ SEXP rph_msa_format_for_content(SEXP filenameP) {
 }
 
 
+
+/* TODO: fix so that if features has only one row it can return them ordered!
+ */
 SEXP rph_msa_read(SEXP filenameP, SEXP formatP, SEXP gffP, 
 		  SEXP do4dP, SEXP alphabetP, 
 		  SEXP tupleSizeP, SEXP refseqP, SEXP orderedP,
@@ -314,7 +317,7 @@ SEXP rph_msa_read(SEXP filenameP, SEXP formatP, SEXP gffP,
     strcpy(alphabet, CHARACTER_VALUE(alphabetP));
   }
   if (refseqP != R_NilValue) 
-    refseq = fopen_fname(CHARACTER_VALUE(refseqP), "r");
+    refseq = phast_fopen(CHARACTER_VALUE(refseqP), "r");
   if (tupleSizeP != R_NilValue)
     tupleSize = INTEGER_VALUE(tupleSizeP);
   if (gffP != R_NilValue) {
@@ -364,7 +367,7 @@ SEXP rph_msa_read(SEXP filenameP, SEXP formatP, SEXP gffP,
     cmStr = smalloc(cmStrLen*sizeof(char));
     sprintf(cmStr, "NCATS = %i", LENGTH(docatsP));
     for (i=0; i<LENGTH(docatsP); i++) {
-      cmStrLen = strlen(cmStr);
+      cmStrLen = (int)strlen(cmStr);
       sprintf(&cmStr[cmStrLen], "; %s %i", CHAR(STRING_ELT(docatsP, i)), i+1);
     }
     cm = cm_new_string_or_file(cmStr);
@@ -404,14 +407,15 @@ SEXP rph_msa_read(SEXP filenameP, SEXP formatP, SEXP gffP,
     }
   }
 
-  infile = fopen_fname(CHARACTER_VALUE(filenameP), "r");
+  infile = phast_fopen(CHARACTER_VALUE(filenameP), "r");
   if (fmt == MAF) {  //reads and automatically converts to SS format
     msa = maf_read_cats_subset(infile, refseq, tupleSize, alphabet, gff, cm, 
 			       cycle_size, ordered, reverse_groups_tag,
 			       NO_STRIP, 0, cats_to_do, seqnames, seq_keep);
   } else {
     msa = msa_new_from_file_define_format(infile, fmt, alphabet);
-    if (idxOffsetP != R_NilValue) msa->idx_offset = INTEGER_VALUE(idxOffsetP);
+    if (fmt != SS && idxOffsetP != R_NilValue) 
+      msa->idx_offset = INTEGER_VALUE(idxOffsetP);
   }
   if ((fmt != MAF || do4d) && gff != NULL) {
     if (msa->ss != NULL && msa->ss->tuple_idx == NULL)
@@ -426,7 +430,7 @@ SEXP rph_msa_read(SEXP filenameP, SEXP formatP, SEXP gffP,
 	f->end -= msa->idx_offset;
       }
     }
-    msa_map_gff_coords(msa, gff, -1, 0, 0, NULL);
+    msa_map_gff_coords(msa, gff, -1, 0, 0);
     if (reverse_groups_tag != NULL) { /*reverse complement by group */
       if (fmt == SS) {
 	ss_to_msa(msa);
@@ -471,15 +475,15 @@ SEXP rph_msa_read(SEXP filenameP, SEXP formatP, SEXP gffP,
   if (ordered==0) msa->idx_offset = 0;
 
   if (refseq != NULL)
-    fclose(refseq);
-  fclose(infile);
+    phast_fclose(refseq);
+  phast_fclose(infile);
   
   /* If we have caluclated sufficient statistics, they are more up-to-date
      than the sequences.  The sequences may contain the full alignment
      whereas the sufficient statistics only the part of the alignment
      that was requested.  Remove the sequences to prevent downstream
      phast functions from working with them */
-  if (msa->ss != NULL && gff != NULL) 
+  if (msa->ss != NULL) 
     msa_free_seqs(msa);
   
   /* This should probably be somewhere in the main code, but I'm not 
@@ -698,7 +702,7 @@ SEXP rph_msa_square_brackets(SEXP msaP, SEXP rowsP, SEXP colsP) {
     } else {
       seqs[i] = smalloc((ncol+1)*sizeof(char));
       for (j=0; j<ncol; j++) {
-	checkInterruptN(j, 10000);
+	checkInterrupt();
 	if (cols[j] > msa->length) 
 	  die("invalid column in rph_msa_square_brackets");
 	seqs[i][j] = msa_get_char(msa, spec, cols[j]-1);
@@ -710,7 +714,6 @@ SEXP rph_msa_square_brackets(SEXP msaP, SEXP rowsP, SEXP colsP) {
   if (numprotect > 0) UNPROTECT(numprotect);
   return rph_msa_new_extptr(newMsa);
 }
-
 
 // function for [<-.msa
 // R code already checks that valueP can be recycled to expected length
@@ -747,6 +750,7 @@ SEXP rph_msa_square_bracket_equals(SEXP msaP, SEXP rowsP, SEXP colsP,
     if (colsP == R_NilValue) col=i;
     else col = cols[i]-1;
     for (j=0; j < nrow; j++) {
+      checkInterrupt();
       if (rowsP == R_NilValue) row = j;
       else row = rows[j]-1;
       msa->seqs[row][col] = CHARACTER_VALUE(STRING_ELT(valueP, pos++))[0];
@@ -757,8 +761,6 @@ SEXP rph_msa_square_bracket_equals(SEXP msaP, SEXP rowsP, SEXP colsP,
     UNPROTECT(numprotect);
   return msaP;
 }
-
-
 
 SEXP rph_msa_sub_alignment(SEXP msaP, SEXP seqsP, SEXP keepP, 
 			   SEXP startcolP, SEXP endcolP, 
@@ -860,16 +862,24 @@ SEXP rph_msa_strip_gaps(SEXP msaP, SEXP stripModeP, SEXP allOrAnyGaps) {
 }
 
 
-SEXP rph_msa_postprob(SEXP msaP, SEXP tmP) {
+SEXP rph_msa_postprob(SEXP msaP, SEXP tmP, SEXP doEverySiteP) {
   MSA *msa = (MSA*)EXTPTR_PTR(msaP);
   TreeModel *tm = (TreeModel*)EXTPTR_PTR(tmP);
   ListOfLists *result = lol_new(1);
+  int doEverySite = LOGICAL_VALUE(doEverySiteP);
+  List *names;
   if (msa->ss == NULL) {
     msa_register_protect(msa);
-    ss_from_msas(msa, tm->order+1, 0, NULL, NULL, NULL, -1, 0);
+    ss_from_msas(msa, tm->order+1, doEverySite, NULL, NULL, NULL, -1, 0);
   }
   tm_register_protect(tm);
-  print_post_prob_stats(tm, msa, NULL, 1, 0, 0, 0, -1, 1, result);
+  names = lst_new_ptr(msa->nseqs);
+  tm_prune(tm, msa, names);
+  if (tm->tree->nnodes == 0) {
+    die("No match for leaves of tree in alignment");
+  }
+  print_post_prob_stats(tm, msa, NULL, 1, 0, 0, 0, doEverySite,
+			-1, 1, result);
   return rph_listOfLists_to_SEXP(result);
 }
 
@@ -878,12 +888,18 @@ SEXP rph_msa_exp_subs(SEXP msaP, SEXP tmP) {
   MSA *msa = (MSA*)EXTPTR_PTR(msaP);
   TreeModel *tm = (TreeModel*)EXTPTR_PTR(tmP);
   ListOfLists *result = lol_new(1);
+  List *names;
   if (msa->ss == NULL) {
     msa_register_protect(msa);
     ss_from_msas(msa, tm->order+1, 0, NULL, NULL, NULL, -1, 0);
   }
   tm_register_protect(tm);
-  print_post_prob_stats(tm, msa, NULL, 0, 1, 0, 0, -1, 1, result);
+  names = lst_new_ptr(msa->nseqs);
+  tm_prune(tm, msa, names);
+  if (tm->tree->nnodes == 0) {
+    die("No match for leaves of tree in alignment");
+  }
+  print_post_prob_stats(tm, msa, NULL, 0, 1, 0, 0, 0, -1, 1, result);
   return rph_listOfLists_to_SEXP(result);
 }
 
@@ -892,12 +908,18 @@ SEXP rph_msa_exp_tot_subs(SEXP msaP, SEXP tmP) {
   MSA *msa = (MSA*)EXTPTR_PTR(msaP);
   TreeModel *tm = (TreeModel*)EXTPTR_PTR(tmP);
   ListOfLists *result = lol_new(1);
+  List *names;
   if (msa->ss == NULL) {
     ss_from_msas(msa, tm->order+1, 0, NULL, NULL, NULL, -1, 0);
     msa_protect(msa);
   }
   tm_register_protect(tm);
-  print_post_prob_stats(tm, msa, NULL, 0, 0, 1, 0, -1, 1, result);
+  names = lst_new_ptr(msa->nseqs);
+  tm_prune(tm, msa, names);
+  if (tm->tree->nnodes == 0) {
+    die("No match for leaves of tree in alignment");
+  }
+  print_post_prob_stats(tm, msa, NULL, 0, 0, 1, 0, 0, -1, 1, result);
   return rph_listOfLists_to_SEXP(result);
 }
 
@@ -905,12 +927,18 @@ SEXP rph_msa_exp_col_subs(SEXP msaP, SEXP tmP) {
   MSA *msa = (MSA*)EXTPTR_PTR(msaP);
   TreeModel *tm = (TreeModel*)EXTPTR_PTR(tmP);
   ListOfLists *result = lol_new(1);
+  List *names;
   if (msa->ss == NULL) {
     ss_from_msas(msa, tm->order+1, 0, NULL, NULL, NULL, -1, 0);
     msa_protect(msa);
   }
   tm_register_protect(tm);
-  print_post_prob_stats(tm, msa, NULL, 0, 0, 0, 1, -1, 1, result);
+  names = lst_new_ptr(msa->nseqs);
+  tm_prune(tm, msa, names);
+  if (tm->tree->nnodes == 0) {
+    die("No match for leaves of tree in alignment");
+  }
+  print_post_prob_stats(tm, msa, NULL, 0, 0, 0, 1, 0, -1, 1, result);
   return rph_listOfLists_to_SEXP(result);
 }
 
@@ -923,6 +951,7 @@ SEXP rph_msa_likelihood(SEXP msaP, SEXP tmP, SEXP gffP, SEXP byColumnP) {
   SEXP result;
   GFF_Set *gff=NULL;
   GFF_Feature *feat;
+  List *names;
 
   by_column = LOGICAL_VALUE(byColumnP);
   if (gffP != R_NilValue) {
@@ -933,7 +962,11 @@ SEXP rph_msa_likelihood(SEXP msaP, SEXP tmP, SEXP gffP, SEXP byColumnP) {
   if (msa->ss == NULL)
     msa_register_protect(msa);
   tm_register_protect(tm);
-
+  names = lst_new_ptr(msa->nseqs);
+  tm_prune(tm, msa, names);
+  if (tm->tree->nnodes == 0) {
+    die("No match for leaves of tree in alignment");
+  }
   tm_set_subst_matrices(tm);
 
   if (by_column) {
@@ -955,7 +988,7 @@ SEXP rph_msa_likelihood(SEXP msaP, SEXP tmP, SEXP gffP, SEXP byColumnP) {
   resultP = NUMERIC_POINTER(result);
 
 
-  likelihood = log2*tl_compute_log_likelihood(tm, msa, col_probs, -1, NULL);
+  likelihood = log2*tl_compute_log_likelihood(tm, msa, col_probs, NULL, -1, NULL);
   if (by_column) {
     for (i=0; i<msa->length; i++)
       resultP[i] = log2*col_probs[i];
@@ -967,7 +1000,7 @@ SEXP rph_msa_likelihood(SEXP msaP, SEXP tmP, SEXP gffP, SEXP byColumnP) {
 	feat->end -= msa->idx_offset;
       }
     }
-    msa_map_gff_coords(msa, gff, -1, 0, 0, NULL);
+    msa_map_gff_coords(msa, gff, -1, 0, 0);
     for (i=0; i < lst_size(gff->features); i++) {
       checkInterruptN(i, 1000);
       feat=(GFF_Feature*)lst_get_ptr(gff->features, i);
@@ -1076,37 +1109,25 @@ SEXP rph_msa_concat(SEXP aggregate_msaP, SEXP source_msaP) {
 SEXP rph_lst_new_extptr(List *l);
 
 SEXP rph_msa_split_by_gff(SEXP msaP, SEXP gffP) {
-  MSA *msa, *newmsa;
+  MSA *msa, **msas;
   ListOfLists *rv;
-  GFF_Feature *feat;
   GFF_Set *gff;
-  int *starts, i;
+  int i, num_msa;
   
   msa = (MSA*)EXTPTR_PTR(msaP);
   gff = (GFF_Set*)EXTPTR_PTR(gffP);
-  rv = lol_new(lst_size(gff->features));
-  starts = smalloc(lst_size(gff->features)*sizeof(int));
   msa_register_protect(msa);
   gff_register_protect(gff);
 
-  /* convert GFF to coordinate frame of alignment */
-  for (i=0; i < lst_size(gff->features); i++) {
-    checkInterruptN(i, 1000);
-    feat = lst_get_ptr(gff->features, i);
-    starts[i] = feat->start;
-    feat->start -= msa->idx_offset;
-    feat->end -= msa->idx_offset;
-  }
-  msa_map_gff_coords(msa, gff, -1, 0, 0, NULL);
-
-  for (i=0; i < lst_size(gff->features); i++) {
-    feat = lst_get_ptr(gff->features, i);
-    newmsa = msa_sub_alignment(msa, NULL, -1, feat->start -1, feat->end);
-    newmsa->idx_offset = starts[i]-1;
-    lol_push_msa_ptr(rv, newmsa, NULL);
-  }
+  msas = msa_split_by_gff(msa, gff);
+  if (msas == NULL) return R_NilValue;
+  num_msa = lst_size(gff->features);
+  rv = lol_new(num_msa);
+  for (i=0; i < num_msa; i++) 
+    lol_push_msa_ptr(rv, msas[i], NULL);
   return rph_listOfLists_to_SEXP(rv);
 }
+
 
 SEXP rph_msaList_get(SEXP listP, SEXP idxP) {
   List* l= (List*)EXTPTR_PTR(listP);
@@ -1189,7 +1210,7 @@ SEXP rph_msa_get_base_freqs_tuples(SEXP msaP, SEXP modP) {
     ss_from_msas(msa, mod->order+1, 0, NULL, NULL, NULL, -1,
                  subst_mod_is_codon_model(mod->subst_mod));
   }
-  nstate = int_pow(strlen(msa->alphabet), mod->order+1);
+  nstate = int_pow((int)strlen(msa->alphabet), mod->order+1);
   if (mod->backgd_freqs == NULL) {
     tm_register_protect(mod);
     mod->backgd_freqs = vec_new(nstate);
@@ -1282,7 +1303,6 @@ SEXP rph_msa_translate(SEXP msaP, SEXP oneFrameP, SEXP frameP) {
     SET_STRING_ELT(result, i, mkChar(trans[i]));
   UNPROTECT(1);
   return result;
-  
 }
 
 

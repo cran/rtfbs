@@ -161,7 +161,7 @@ char **get_state_names(TreeModel *mod, const char *prefix, int *len) {
   char **rv = smalloc(mod->rate_matrix->size*sizeof(char*));
   *len = mod->rate_matrix->size;
   if (prefix == NULL) prefixlen = 0;
-  else prefixlen = strlen(prefix);
+  else prefixlen = (int)strlen(prefix);
   for (state=0; state < mod->rate_matrix->size; state++) {
     rv[state] = smalloc((mod->order + 2 + prefixlen)*sizeof(char));
     rv[state][mod->order + 1 + prefixlen] = '\0';
@@ -171,6 +171,22 @@ char **get_state_names(TreeModel *mod, const char *prefix, int *len) {
   }
   return rv;
 }
+
+
+char **get_site_names(MSA *msa, int *len) {
+  char **rv;
+  char tempch[100];
+  int i;
+  *len = (int)msa->length;
+  rv = smalloc((*len) * sizeof(char*));
+  for (i=0; i < *len; i++) {
+    sprintf(tempch, "%i", i+1);
+    rv[i] = smalloc((strlen(tempch)+1)*sizeof(char));
+    strcpy(rv[i], tempch);
+  }
+  return rv;
+}
+
 
 char **get_tuple_names(TreeModel *mod, MSA *msa, int cat, int *len) {
   int tup, idx=0;
@@ -205,6 +221,7 @@ void print_post_prob_stats(TreeModel *mod, MSA *msa, char *output_fname_root,
                            int do_bases, int do_expected_nsubst, 
                            int do_expected_nsubst_tot, 
 			   int do_expected_nsubst_col,
+			   int do_every_site,
 			   int cat, int quiet,
 			   ListOfLists *results) {
   String *fname = str_new(STR_MED_LEN);
@@ -215,6 +232,11 @@ void print_post_prob_stats(TreeModel *mod, MSA *msa, char *output_fname_root,
   char coltupstr[msa->nseqs+1];
   int ratecat;
   char ***dimnames;
+
+  if (msa->ss == NULL) 
+    die("Error: print_post_prob_stats needs sufficient statistics");
+  if (do_every_site && msa->ss->tuple_idx == NULL)
+    die("Error in print_post_prob_stats: do_every_site option requires ordered sufficient statistics");
 
   tuplestr[mod->order+1] = '\0';
   coltupstr[msa->nseqs] = '\0';
@@ -234,7 +256,7 @@ void print_post_prob_stats(TreeModel *mod, MSA *msa, char *output_fname_root,
                                                 do_expected_nsubst_tot, 
 						do_expected_nsubst_col,
 						0, 0);
-  tl_compute_log_likelihood(mod, msa, NULL, cat, mod->tree_posteriors);
+  tl_compute_log_likelihood(mod, msa, NULL, NULL, cat, mod->tree_posteriors);
   tr_name_ancestors(mod->tree);
 
   if (do_bases) {
@@ -245,7 +267,9 @@ void print_post_prob_stats(TreeModel *mod, MSA *msa, char *output_fname_root,
       dimnames[0] = get_ratecat_names(mod, &dimsize[0]);
       dimnames[1] = get_node_names(mod, 0, 1, 0, &dimsize[1]);
       dimnames[2] = get_state_names(mod, NULL, &dimsize[2]);
-      dimnames[3] = get_tuple_names(mod, msa, cat, &dimsize[3]);
+      if (do_every_site)
+	dimnames[3] = get_site_names(msa, &dimsize[3]);
+      else dimnames[3] = get_tuple_names(mod, msa, cat, &dimsize[3]);
 
       arr = (double****)alloc_n_dimensional_array(4, dimsize, sizeof(double));
       for (ratecat=0; ratecat < mod->nratecats; ratecat++) {
@@ -253,12 +277,20 @@ void print_post_prob_stats(TreeModel *mod, MSA *msa, char *output_fname_root,
 	for (node = 0; node < mod->tree->nnodes; node++) {
 	  n = (TreeNode*)lst_get_ptr(mod->tree->nodes, node);
 	  if (n->lchild == NULL || n->rchild == NULL) continue;
-	  for (state = 0 ; state < mod->rate_matrix->size; state++) {
-	    int tup_idx=0;
-	    for (tup=0; tup < msa->ss->ntuples; tup++) {
-	      if ((cat >=0 && msa->ss->cat_counts[cat][tup] == 0) ||
-		  msa->ss->counts[tup] == 0) continue;
-	      arr[ratecat][node_idx][state][tup_idx++] = mod->tree_posteriors->base_probs[ratecat][state][n->id][tup];
+	  if (do_every_site) {
+	    for (i=0; i < msa->length; i++) {
+	      for (state=0; state < mod->rate_matrix->size; state++) {
+		arr[ratecat][node_idx][state][i] = mod->tree_posteriors->base_probs[ratecat][state][n->id][msa->ss->tuple_idx[i]];
+	      }
+	    }
+	  } else {
+	    for (state = 0 ; state < mod->rate_matrix->size; state++) {
+	      int tup_idx=0;
+	      for (tup=0; tup < msa->ss->ntuples; tup++) {
+		if ((cat >=0 && msa->ss->cat_counts[cat][tup] == 0) ||
+		    msa->ss->counts[tup] == 0) continue;
+		arr[ratecat][node_idx][state][tup_idx++] = mod->tree_posteriors->base_probs[ratecat][state][n->id][tup];
+	      }
 	    }
 	  }
 	  node_idx++;
@@ -278,7 +310,8 @@ void print_post_prob_stats(TreeModel *mod, MSA *msa, char *output_fname_root,
       if (!quiet) 
 	fprintf(stderr, "Writing posterior probabilities to %s ...\n", 
 		fname->chars);
-      POSTPROBF = fopen_fname(fname->chars, "w+");
+
+      POSTPROBF = phast_fopen(fname->chars, "w+");
       
       /* print header */
       fprintf(POSTPROBF, "%-6s ", "#");
@@ -326,7 +359,7 @@ void print_post_prob_stats(TreeModel *mod, MSA *msa, char *output_fname_root,
 	}                 
 	fprintf(POSTPROBF, "\n");
       }
-      fclose(POSTPROBF);
+      phast_fclose(POSTPROBF);
     }
   }
 
@@ -376,7 +409,7 @@ void print_post_prob_stats(TreeModel *mod, MSA *msa, char *output_fname_root,
       if (!quiet) 
 	fprintf(stderr, "Writing expected numbers of substitutions to %s ...\n", 
 		fname->chars);
-      EXPSUBF = fopen_fname(fname->chars, "w+");
+      EXPSUBF = phast_fopen(fname->chars, "w+");
       
       fprintf(EXPSUBF, "%-3s %10s %7s ", "#", "tuple", "count");
       for (node = 0; node < mod->tree->nnodes; node++) {
@@ -403,7 +436,7 @@ void print_post_prob_stats(TreeModel *mod, MSA *msa, char *output_fname_root,
 	}                 
 	fprintf(EXPSUBF, "%7.4f\n", total);
       }
-      fclose(EXPSUBF);
+      phast_fclose(EXPSUBF);
     }
   }
 
@@ -453,7 +486,7 @@ void print_post_prob_stats(TreeModel *mod, MSA *msa, char *output_fname_root,
       if (!quiet) 
 	fprintf(stderr, "Writing expected numbers of substitutions per site to %s ...\n",
 		fname->chars);
-      EXPSUBF = fopen_fname(fname->chars, "w+");
+      EXPSUBF = phast_fopen(fname->chars, "w+");
 
       /* print header */
       fprintf(EXPSUBF, "#tuple\tcount\tbranch");
@@ -486,7 +519,7 @@ void print_post_prob_stats(TreeModel *mod, MSA *msa, char *output_fname_root,
 	  fprintf(EXPSUBF, "\n");
 	}
       }
-      fclose(EXPSUBF);
+      phast_fclose(EXPSUBF);
     }
   }
 
@@ -528,7 +561,7 @@ void print_post_prob_stats(TreeModel *mod, MSA *msa, char *output_fname_root,
       if (!quiet) 
 	fprintf(stderr, "Writing total expected numbers of substitutions to %s ...\n", 
 		fname->chars);
-      EXPTOTSUBF = fopen_fname(fname->chars, "w+");
+      EXPTOTSUBF = phast_fopen(fname->chars, "w+");
       
       fprintf(EXPTOTSUBF, "\n\
 A separate matrix of expected numbers of substitutions is shown for each\n\
@@ -566,7 +599,7 @@ horizontal axis.\n\n");
 	}
 	fprintf(EXPTOTSUBF, "\n\n");
       }
-      fclose(EXPTOTSUBF);
+      phast_fclose(EXPTOTSUBF);
     }
   }
 
@@ -625,7 +658,7 @@ int run_phyloFit(struct phyloFit_struct *pf) {
   int free_cm = FALSE, free_cats_to_do_str=FALSE, free_tree=FALSE,
     free_window_coords = FALSE;
 
-  //copy some heavily used variables directly from pf for easy access
+  //copy some heavily used variables directly from pf
   MSA *msa = pf->msa;
   int subst_mod = pf->subst_mod;
   TreeNode *tree = pf->tree;
@@ -638,7 +671,7 @@ int run_phyloFit(struct phyloFit_struct *pf) {
     pf->init_backgd_from_data = FALSE;
 
   if (pf->parsimony_cost_fname != NULL)
-    parsimony_cost_file = fopen_fname(pf->parsimony_cost_fname, "w");
+    parsimony_cost_file = phast_fopen(pf->parsimony_cost_fname, "w");
 
   if (pf->use_conditionals && pf->use_em) 
     die("ERROR: Cannot use --markov with --EM.    Type %s for usage.\n",
@@ -783,7 +816,7 @@ int run_phyloFit(struct phyloFit_struct *pf) {
     }
 
     /* convert GFF to coordinate frame of alignment */
-    msa_map_gff_coords(msa, gff, 1, 0, 0, NULL);
+    msa_map_gff_coords(msa, gff, 1, 0, 0);
 
     /* reverse complement segments of MSA corresponding to features on
        reverse strand (if necessary) */
@@ -852,7 +885,7 @@ int run_phyloFit(struct phyloFit_struct *pf) {
     if (pf->output_fname_root != NULL) {
       sumfname = str_new_charstr(pf->output_fname_root);
       str_append_charstr(sumfname, ".win-sum");
-      WINDOWF = fopen_fname(sumfname->chars, "w+");
+      WINDOWF = phast_fopen(sumfname->chars, "w+");
       str_free(sumfname);
     } 
     print_window_summary(WINDOWF, NULL, 0, 0, NULL, NULL, 0, 0, TRUE);
@@ -869,7 +902,7 @@ int run_phyloFit(struct phyloFit_struct *pf) {
   }
 
   if (pf->error_fname != NULL)
-    error_file = fopen_fname(pf->error_fname, "w");
+    error_file = phast_fopen(pf->error_fname, "w");
   
   /* now estimate models (window by window, if necessary) */
   mod_fname = str_new(STR_MED_LEN);
@@ -1064,7 +1097,7 @@ int run_phyloFit(struct phyloFit_struct *pf) {
           for (j = 0; j < msa->length; j++)
             msa->ss->tuple_idx[j] = j;
         }
-        mod->lnL = tl_compute_log_likelihood(mod, msa, col_log_probs, cat, NULL) * 
+        mod->lnL = tl_compute_log_likelihood(mod, msa, col_log_probs, NULL, cat, NULL) * 
           log(2);
         if (pf->do_column_probs) {
 	  //we don't need to implement this in RPHAST because there is
@@ -1076,10 +1109,10 @@ int run_phyloFit(struct phyloFit_struct *pf) {
           if (!quiet) 
             fprintf(stderr, "Writing column probabilities to %s ...\n", 
                     colprob_fname->chars);
-          F = fopen_fname(colprob_fname->chars, "w+");
+          F = phast_fopen(colprob_fname->chars, "w+");
           for (j = 0; j < msa->length; j++)
             fprintf(F, "%d\t%.6f\n", j, col_log_probs[j]);
-          fclose(F);
+          phast_fclose(F);
           str_free(colprob_fname);
           sfree(col_log_probs);
         }
@@ -1162,9 +1195,9 @@ int run_phyloFit(struct phyloFit_struct *pf) {
       if (pf->output_fname_root != NULL) {
 	if (!quiet) fprintf(stderr, "Writing model to %s ...\n", 
 			    mod_fname->chars);
-	F = fopen_fname(mod_fname->chars, "w+");
+	F = phast_fopen(mod_fname->chars, "w+");
 	tm_print(F, mod);
-	fclose(F);
+	phast_fclose(F);
       }
       if (pf->results != NULL)
 	lol_push_treeModel(pf->results, mod, mod_fname->chars);
@@ -1175,7 +1208,7 @@ int run_phyloFit(struct phyloFit_struct *pf) {
 	print_post_prob_stats(mod, msa, pf->output_fname_root, 
 			      pf->do_bases, pf->do_expected_nsubst, 
 			      pf->do_expected_nsubst_tot, 
-			      pf->do_expected_nsubst_col,
+			      pf->do_expected_nsubst_col, 0,
 			      cat, quiet, NULL);
       }
 
@@ -1207,8 +1240,8 @@ int run_phyloFit(struct phyloFit_struct *pf) {
     if (pf->window_coords != NULL) 
       msa_free(msa);
   }
-  if (error_file != NULL) fclose(error_file);
-  if (parsimony_cost_file != NULL) fclose(parsimony_cost_file); 
+  if (error_file != NULL) phast_fclose(error_file);
+  if (parsimony_cost_file != NULL) phast_fclose(parsimony_cost_file); 
   str_free(mod_fname);
   str_free(tmpstr);
   if (free_cm) {

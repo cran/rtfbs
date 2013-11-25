@@ -139,14 +139,15 @@ MSA *maf_read_cats_subset(FILE *F, FILE *REFSEQF, int tuple_size,
       msa->alloc_len = msa->length = refseqlen;  //this may still not be big enough because of gaps in refseq
     else 
       msa->alloc_len = 50000;
-    max_tuples =  max(1000000, pow(strlen(msa->alphabet)+strlen(msa->missing)+1, 
+    max_tuples =  max(1000000, (int)pow(strlen(msa->alphabet)+strlen(msa->missing)+1, 
 				   2 * msa->nseqs * tuple_size));
-    if (max_tuples > 10000000 || max_tuples < 0) max_tuples = 10000000;
-    if (max_tuples < 1000000) max_tuples = 1000000;
   }
   else 
     max_tuples = min(1000000,
-		     pow(strlen(msa->alphabet)+strlen(msa->missing)+1, 2 * msa->nseqs * tuple_size));
+		     (int)pow(strlen(msa->alphabet)+strlen(msa->missing)+1, 2 * msa->nseqs * tuple_size));
+
+  if (max_tuples > 10000000 || max_tuples < 0) max_tuples = 10000000;
+  if (max_tuples < 1000000) max_tuples = 1000000;
 
   tuple_hash = hsh_new(max_tuples); 
   ss_new(msa, tuple_size, max_tuples, gff != NULL || cycle_size > 0 ? 1 : 0, 
@@ -274,7 +275,7 @@ MSA *maf_read_cats_subset(FILE *F, FILE *REFSEQF, int tuple_size,
          mini_gff to the coords of the mini_msa */
       /* NOTE: not necessary because automatically projecting */
 /*       if (map == NULL && lst_size(mini_gff->features) > 0)  */
-/*         msa_map_gff_coords(mini_msa, mini_gff, 1, 0, 0, cm); */
+/*         msa_map_gff_coords(mini_msa, mini_gff, 1, 0, 0); */
 
       if (reverse_groups != NULL && lst_size(mini_gff->features) > 0) {
 	gff_group(mini_gff, reverse_groups);
@@ -328,7 +329,7 @@ MSA *maf_read_cats_subset(FILE *F, FILE *REFSEQF, int tuple_size,
     char tuple_str[msa->nseqs * tuple_size + 1];
     int offset, tuple_idx, msa_idx, map_idx, fasthash_idx;
     String *refseq;
-    int alph_size = strlen(msa->alphabet), nreftuples = int_pow(alph_size, tuple_size);
+    int alph_size = (int)strlen(msa->alphabet), nreftuples = int_pow(alph_size, tuple_size);
     int *fasthash = smalloc(nreftuples * sizeof(int));
     char reftuple[tuple_size + 1];
 
@@ -387,7 +388,7 @@ MSA *maf_read_cats_subset(FILE *F, FILE *REFSEQF, int tuple_size,
           ss_get_char_pos(msa, msa_idx, 0, 0);
 
       if (do_toupper)
-        refseq->chars[i] = toupper(refseq->chars[i]);
+        refseq->chars[i] = (char)toupper(refseq->chars[i]);
 
       if (msa->inv_alphabet[(int)refseq->chars[i]] < 0 &&
           refseq->chars[i] != GAP_CHAR &&
@@ -596,13 +597,15 @@ MSA *maf_read_unsorted(FILE *F, FILE *REFSEQF, int tuple_size, char *alphabet,
   if (store_order) {
     msa->length = map != NULL ? map->msa_len : refseqlen;
     max_tuples = min(msa->length,
-                     pow(strlen(msa->alphabet)+strlen(msa->missing)+1, msa->nseqs * tuple_size));
+                     (int)pow(strlen(msa->alphabet)+strlen(msa->missing)+1, msa->nseqs * tuple_size));
+    if (max_tuples < 0) max_tuples = msa->length;
     if (max_tuples > 1000000) max_tuples = 1000000; 
   }
   else {
     msa->length = 0;
     max_tuples = min(50000,
-                     pow(strlen(msa->alphabet)+strlen(msa->missing)+1, msa->nseqs * tuple_size));
+                     (int)pow(strlen(msa->alphabet)+strlen(msa->missing)+1, msa->nseqs * tuple_size));
+    if (max_tuples < 0) max_tuples = 50000;
   }
 
   tuple_hash = hsh_new(max_tuples); 
@@ -645,7 +648,7 @@ MSA *maf_read_unsorted(FILE *F, FILE *REFSEQF, int tuple_size, char *alphabet,
          mini_gff to the coords of the mini_msa */
       /* NOTE: not necessary because automatically projecting */
 /*       if (map == NULL && lst_size(mini_gff->features) > 0)  */
-/*         msa_map_gff_coords(mini_msa, mini_gff, 1, 0, 0, cm); */
+/*         msa_map_gff_coords(mini_msa, mini_gff, 1, 0, 0); */
 
       if (reverse_groups != NULL && lst_size(mini_gff->features) > 0) {
           gff_group(mini_gff, reverse_groups);
@@ -695,7 +698,7 @@ MSA *maf_read_unsorted(FILE *F, FILE *REFSEQF, int tuple_size, char *alphabet,
     char tuple_str[msa->nseqs * tuple_size + 1];
     int offset, tuple_idx, msa_idx, map_idx, fasthash_idx;
     String *refseq;
-    int alph_size = strlen(msa->alphabet), nreftuples = int_pow(alph_size, tuple_size);
+    int alph_size = (int)strlen(msa->alphabet), nreftuples = int_pow(alph_size, tuple_size);
     int *fasthash = smalloc(nreftuples * sizeof(int));
     char reftuple[tuple_size + 1];
 
@@ -743,7 +746,7 @@ MSA *maf_read_unsorted(FILE *F, FILE *REFSEQF, int tuple_size, char *alphabet,
           ss_get_char_pos(msa, msa_idx, 0, 0);
 
       if (do_toupper)
-        refseq->chars[i] = toupper(refseq->chars[i]);
+        refseq->chars[i] = (char)toupper(refseq->chars[i]);
 
       if (msa->inv_alphabet[(int)refseq->chars[i]] < 0 &&
           refseq->chars[i] != GAP_CHAR &&
@@ -929,7 +932,7 @@ int maf_read_block_addseq(FILE *F, MSA *mini_msa, Hashtable *name_hash,
     }
 
     for (i = 0; i < this_seq->length; i++) {
-      mini_msa->seqs[seqidx][i] = do_toupper ? toupper(this_seq->chars[i]) : 
+      mini_msa->seqs[seqidx][i] = do_toupper ? (char)toupper(this_seq->chars[i]) : 
         this_seq->chars[i];
       if (mini_msa->seqs[seqidx][i] == '.' && mini_msa->inv_alphabet[(int)'.'] == -1) 
         mini_msa->seqs[seqidx][i] = mini_msa->missing[0];
@@ -1050,7 +1053,7 @@ int maf_read_block(FILE *F, MSA *mini_msa, Hashtable *name_hash,
       die("ERROR: maf_read_block: %s != %s\n", this_name->chars, mini_msa->names[seqidx]);
 
     for (i = 0; i < this_seq->length; i++) {
-      mini_msa->seqs[seqidx][i] = do_toupper ? toupper(this_seq->chars[i]) : 
+      mini_msa->seqs[seqidx][i] = do_toupper ? (char)toupper(this_seq->chars[i]) : 
         this_seq->chars[i];
       if (mini_msa->seqs[seqidx][i] == '.' && mini_msa->inv_alphabet[(int)'.'] == -1) 
         mini_msa->seqs[seqidx][i] = mini_msa->missing[0];

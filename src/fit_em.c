@@ -36,6 +36,7 @@
 /* internal functions */
 double tm_partial_ll_wrapper(Vector *params, void *data);
 double tm_partial_ll_wrapper_fast(Vector *params, void *data);
+double tm_likelihood_wrapper(Vector *params, void *data);
 void tm_log_em(FILE *logf, int header_only, double val, Vector *params);
 void compute_grad_em_approx(Vector *grad, Vector *params, void *data, 
                             Vector *lb, Vector *ub);
@@ -60,6 +61,7 @@ int tm_fit_em(TreeModel *mod, MSA *msa, Vector *params, int cat,
   FILE *F;
   void (*grad_func)(Vector*, Vector*, void*, Vector*, 
                     Vector*);
+  double (*likelihood_func)(Vector *, void*);
   Matrix *H;
   int opt_ratevar_freqs=0;
   opt_precision_type bfgs_prec = OPT_LOW_PREC;
@@ -80,7 +82,7 @@ int tm_fit_em(TreeModel *mod, MSA *msa, Vector *params, int cat,
   }
 
   if (mod->tree == NULL) {      /* weight matrix */
-    mod->lnL = tl_compute_log_likelihood(mod, msa, NULL, cat, NULL) * 
+    mod->lnL = tl_compute_log_likelihood(mod, msa, NULL, NULL, cat, NULL) * 
       log(2);
     return 0;
   }
@@ -106,16 +108,18 @@ int tm_fit_em(TreeModel *mod, MSA *msa, Vector *params, int cat,
   /* in the case of rate variation, start by ignoring then reinstate
      when close to convergence */
   nratecats = mod->nratecats;
-  if (nratecats > 1 && !mod->site_model) {
+  if (nratecats > 1 && mod->param_map[mod->ratevar_idx] != -1) {
     remove_ratevar_from_param_map(mod, params);
     opt_ratevar_freqs = 1;
-    alpha = mod->alpha;
-    mod->alpha = -nratecats;    /* code to ignore rate variation
-                                   temporarily */
-    mod->nratecats = 1;
-    freqK0 = mod->freqK[0];
-    rK0 = mod->rK[0];
-    mod->freqK[0] = mod->rK[0] = 1;
+    if (mod->alt_subst_mods == NULL) {
+      alpha = mod->alpha;
+      mod->alpha = -nratecats;    /* code to ignore rate variation
+  				   temporarily */
+      mod->nratecats = 1;
+      freqK0 = mod->freqK[0];
+      rK0 = mod->rK[0];
+      mod->freqK[0] = mod->rK[0] = 1;
+    }
   }
 
   if (logf != NULL) tm_log_em(logf, 1, 0, params);
@@ -134,6 +138,10 @@ int tm_fit_em(TreeModel *mod, MSA *msa, Vector *params, int cat,
   if (grad_func != NULL)
     mm_set_eigentype(mod->rate_matrix, COMPLEX_NUM);
 
+  if (mod->estimate_backgd)
+    likelihood_func = tm_likelihood_wrapper;
+  else likelihood_func = tm_partial_ll_wrapper;
+
   npar=0;
   for (i=0; i<params->size; i++) 
     if (mod->param_map[i] >= npar) 
@@ -147,7 +155,7 @@ int tm_fit_em(TreeModel *mod, MSA *msa, Vector *params, int cat,
     vec_set(mod->all_params, i, vec_get(params, i));
   }
 
-  tm_set_boundaries(&lower_bounds, &upper_bounds, npar, mod);
+  tm_new_boundaries(&lower_bounds, &upper_bounds, npar, mod, 0);
 
   H = mat_new(npar, npar);
   mat_set_identity(H);
@@ -173,14 +181,14 @@ int tm_fit_em(TreeModel *mod, MSA *msa, Vector *params, int cat,
     
     /* if appropriate, dump intermediate version of model for inspection */
     if (mod->order >= 2) {
-      F = fopen(tmp_mod_fname, "w+"); tm_print(F, mod); fclose(F);
+      F = phast_fopen(tmp_mod_fname, "w+"); tm_print(F, mod); phast_fclose(F);
     }
 
     /* obtain posterior probabilities and likelihood */
     if (logf != NULL) 
       gettimeofday(&post_prob_start, NULL);
 
-    ll = tl_compute_log_likelihood(mod, msa, NULL, cat, mod->tree_posteriors) 
+    ll = tl_compute_log_likelihood(mod, msa, NULL, NULL, cat, mod->tree_posteriors) 
       * log(2); 
 
     if (logf != NULL) {
@@ -252,7 +260,7 @@ int tm_fit_em(TreeModel *mod, MSA *msa, Vector *params, int cat,
 	vec_set(mod->all_params, mod->ratevar_idx+i, vec_get(params, mod->ratevar_idx+i));
     }
 
-    opt_bfgs(tm_partial_ll_wrapper, opt_params, (void*)mod, &tmp, lower_bounds,
+    opt_bfgs(likelihood_func, opt_params, (void*)mod, &tmp, lower_bounds,
              upper_bounds, logf, grad_func, bfgs_prec, H, NULL); 
 
     if (mod->nratecats != nratecats && 
@@ -275,7 +283,7 @@ int tm_fit_em(TreeModel *mod, MSA *msa, Vector *params, int cat,
 	}
 	if (lower_bounds != NULL) vec_free(lower_bounds);
 	if (upper_bounds != NULL) vec_free(upper_bounds);
-	tm_set_boundaries(&lower_bounds, &upper_bounds, npar, mod);
+	tm_new_boundaries(&lower_bounds, &upper_bounds, npar, mod, 0);
 	mat_free(H);
 	H = mat_new(npar, npar);
 	mat_set_identity(H);
@@ -329,18 +337,15 @@ int tm_fit_em(TreeModel *mod, MSA *msa, Vector *params, int cat,
 
 
 void remove_ratevar_from_param_map(TreeModel *mod, Vector *params) {
-  int i, offset=0;
+  int i, j;
   if (mod->nratecats == 1) return;
+
   for (i=mod->ratevar_idx; i < mod->ratevar_idx + tm_get_nratevarparams(mod); i++) {
     if (mod->param_map[i] >= 0) {
-      offset++;
+      for (j=0; j < params->size; j++)
+	if (mod->param_map[j] > mod->param_map[i])
+	  mod->param_map[j]--;
       mod->param_map[i] = -1;
-    }
-  }
-  if (offset > 0) {
-    for (; i < params->size; i++) {
-      if (mod->param_map[i] >= 0)
-	mod->param_map[i] -= offset;
     }
   }
 }
@@ -409,7 +414,7 @@ void compute_grad_em_approx(Vector *grad, Vector *params, void *data,
 
   TreeModel *mod = (TreeModel*)data;
   MarkovMatrix *P, *Q = mod->rate_matrix;
-  int alph_size = strlen(mod->rate_matrix->states);
+  int alph_size = (int)strlen(mod->rate_matrix->states);
   int nstates = mod->rate_matrix->size;
   int ndigits = mod->order + 1;
   int nneighbors = ((alph_size-1) * ndigits + 1);
@@ -682,7 +687,7 @@ void compute_grad_em_approx(Vector *grad, Vector *params, void *data,
                                    wrt rate weights (they're already
                                    incorporated into the post
                                    probs) */
-    int nrc = mod->nratecats > 1 ? mod->nratecats : -mod->alpha;
+    int nrc = mod->nratecats > 1 ? mod->nratecats : -(int)mod->alpha;
     for (; nrc >= 1; nrc--) {
       grad_idx = mod->param_map[mod->ratevar_idx + nrc - 1];
       if (grad_idx >= 0)
@@ -1117,7 +1122,7 @@ void compute_grad_em_exact(Vector *grad, Vector *params, void *data,
                                    wrt rate weights (they're already
                                    incorporated into the post
                                    probs) */
-    int nrc = mod->nratecats > 1 ? mod->nratecats : -mod->alpha;
+    int nrc = mod->nratecats > 1 ? mod->nratecats : -(int)mod->alpha;
     for (; nrc >= 1; nrc--) {
       grad_idx = mod->param_map[mod->ratevar_idx + nrc - 1];
       if (grad_idx >= 0)

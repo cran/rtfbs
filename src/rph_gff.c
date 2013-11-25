@@ -26,6 +26,7 @@ Last updated: 1/5/2010
 #include <misc.h>
 #include <list_of_lists.h>
 #include <rph_util.h>
+#include <limits.h>
 
 #include <Rdefines.h>
 
@@ -53,10 +54,10 @@ SEXP rph_gff_copy(SEXP gffP) {
 
 
 SEXP rph_gff_read(SEXP filename) {
-  FILE *infile = fopen_fname(CHARACTER_VALUE(filename), "r");
+  FILE *infile = phast_fopen(CHARACTER_VALUE(filename), "r");
   SEXP rv;
   PROTECT(rv = rph_gff_new_extptr(gff_read_set(infile)));
-  fclose(infile);
+  phast_fclose(infile);
   UNPROTECT(1);
   return rv;
 }
@@ -211,10 +212,10 @@ SEXP rph_gff_print(SEXP filename, SEXP gff) {
   FILE *outfile;
   if (filename == R_NilValue)
     outfile = stdout;
-  else outfile = fopen_fname(CHARACTER_VALUE(filename), "w");
+  else outfile = phast_fopen(CHARACTER_VALUE(filename), "w");
   
   gff_print_set(outfile, (GFF_Set*)EXTPTR_PTR(gff));
-  if (outfile != stdout) fclose(outfile);
+  if (outfile != stdout) phast_fclose(outfile);
   return R_NilValue;
 }
 
@@ -450,12 +451,12 @@ SEXP rph_gff_one_attribute(SEXP gffP, SEXP tagP) {
   ListOfLists *lol;
   List *l1, *l2;
   int numtag, numval, i, j, k, resultLen, maxResultLen=10;
-  String *currStr, *tag;
+  String *currStr, *tag, *currTag;
   char **result;
   SEXP rv;
   SEXP rph_listOfLists_to_SEXP(ListOfLists *lol);
 
-
+  
   if (lst_size(gff->features) == 0) return R_NilValue;
   gff_register_protect(gff);
   result = smalloc(maxResultLen*sizeof(char*));    
@@ -472,15 +473,19 @@ SEXP rph_gff_one_attribute(SEXP gffP, SEXP tagP) {
     for (j=0; j < numtag; j++) {
       currStr = (String*)lst_get_ptr(l1, j);
       str_double_trim(currStr);
-
-      //split into tag val val ... by whitespace unless enclosed in quotes
-      numval =  str_split_with_quotes(currStr, NULL, l2);
-      if (numval > 1) {
-	currStr = (String*)lst_get_ptr(l2, 0);
-	str_double_trim(currStr);
-	if (str_equals(tag, currStr)) {  //tag matches target, add all values to list
-	  for (k=1; k < numval; k++) {
-	    currStr = (String*)lst_get_ptr(l2, k);
+      
+      //first try gff version 3, see if we have tag=val format
+      numval = str_split_with_quotes(currStr, "=", l2);
+      if (numval == 2) {
+	currTag = (String*)lst_get_ptr(l2, 0);
+	str_double_trim(currTag);
+	if (str_equals(tag, currTag)) {  // tag matches target, add all values to list
+	  currStr = str_new_charstr(((String*)lst_get_ptr(l2, 1))->chars);
+	  lst_free_strings(l2);
+	  numval = str_split_with_quotes(currStr, ",", l2);
+	  str_free(currStr);
+	  for (k=0; k < numval; k++) {
+	    currStr = lst_get_ptr(l2, k);
 	    str_double_trim(currStr);
 	    str_remove_quotes(currStr);
 	    if (resultLen > maxResultLen) {
@@ -490,6 +495,29 @@ SEXP rph_gff_one_attribute(SEXP gffP, SEXP tagP) {
 	    result[resultLen++] = copy_charstr(currStr->chars);
 	  }
 	}
+      } else {
+	lst_free_strings(l2);
+	
+	//gff version 2
+	//split into tag val val ... by whitespace unless enclosed in quotes
+	numval =  str_split_with_quotes(currStr, NULL, l2);
+	if (numval > 1) {
+	  currStr = (String*)lst_get_ptr(l2, 0);
+	  str_double_trim(currStr);
+	  if (str_equals(tag, currStr)) {  //tag matches target, add all values to list
+	    for (k=1; k < numval; k++) {
+	      currStr = (String*)lst_get_ptr(l2, k);
+	      str_double_trim(currStr);
+	      str_remove_quotes(currStr);
+	      if (resultLen > maxResultLen) {
+		maxResultLen += 100;
+		result = srealloc(result, maxResultLen*sizeof(char*));
+	      }
+	      result[resultLen++] = copy_charstr(currStr->chars);
+	    }
+	  }
+	}
+	lst_free_strings(l2);
       }
     }
     if (resultLen == 0) 
@@ -597,7 +625,8 @@ SEXP rph_gff_inverse(SEXP gffP, SEXP regionP) {
 
 
 SEXP rph_gff_featureBits(SEXP gffListP, SEXP orP, SEXP returnGffP) {
-  int numGff, i, j, or, returnGff, numbit=0;
+  int numGff, i, j, or, returnGff;
+  long numbit = 0;
   List *gfflist;
   GFF_Set *gff, *newgff=NULL;
   GFF_Feature *feat, *newfeat;
@@ -642,8 +671,14 @@ SEXP rph_gff_featureBits(SEXP gffListP, SEXP orP, SEXP returnGffP) {
   }
   if (returnGff) 
     return rph_gff_new_extptr(newgff);
-  PROTECT(rv = allocVector(INTSXP, 1));
-  INTEGER(rv)[0] = numbit;
+  
+  if (numbit > INT_MAX) {
+    PROTECT(rv = allocVector(REALSXP, 1));
+    REAL(rv)[0] = numbit;
+  } else {
+    PROTECT(rv = allocVector(INTSXP, 1));
+    INTEGER(rv)[0] = numbit;
+  }
   UNPROTECT(1);
   return rv;
 }
@@ -709,4 +744,15 @@ SEXP rph_gff_flatten(SEXP gffP) {
   gff_group_by_seqname(gff);
   gff_flatten_within_groups(gff);
   return gffP;
+}
+
+
+SEXP rph_gff_convert_coords(SEXP gffP, SEXP msaP, SEXP toP) {
+  GFF_Set *gff;
+  MSA *msa=(MSA*)EXTPTR_PTR(msaP);
+  int to=INTEGER_VALUE(toP);
+  
+  gff = gff_copy_set_no_groups((GFF_Set*)EXTPTR_PTR(gffP));
+  msa_map_gff_coords(msa, gff, -1, to, 0);
+  return rph_gff_new_extptr(gff);
 }

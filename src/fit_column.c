@@ -830,6 +830,7 @@ void col_lrts_sub(TreeModel *mod, MSA *msa, mode_type mode,
   modcpy = tm_create_copy(mod);   /* need separate copy of tree model
                                      with different internal scaling
                                      data for supertree/subtree case */
+  modcpy->subtree_root = NULL;
 
   /* init ColFitData -- one for null model, one for alt */
   d = col_init_fit_data(modcpy, msa, ALL, NNEUT, FALSE);
@@ -1466,8 +1467,8 @@ FimGrid *col_fim_grid_sub(TreeModel *mod) {
   int i;
   FimGrid *g = smalloc(sizeof(FimGrid));
 
-  g->ngrid1 = 1.0/GRIDSIZE1;
-  g->ngrid2 = (1.0 * GRIDMAXLOG / GRIDSIZE2) + 1;
+  g->ngrid1 = (int)(1.0/GRIDSIZE1);
+  g->ngrid2 = (int)((1.0 * GRIDMAXLOG / GRIDSIZE2) + 1);
   g->ngrid = g->ngrid1 + g->ngrid2;  
   g->scales = smalloc(g->ngrid * sizeof(double));
 
@@ -1533,9 +1534,9 @@ Matrix *col_get_fim_sub(FimGrid *g, double scale) {
     die("ERROR col_get_fix_sub: scale should be >= 0 but is %e\n", scale);
 
   if (scale < 1) 
-    idx = floor(scale / GRIDSIZE1);
+    idx = (int)floor(scale / GRIDSIZE1);
   else
-    idx = g->ngrid1 + floor(log(scale) / GRIDSIZE2);
+    idx = g->ngrid1 + (int)floor(log(scale) / GRIDSIZE2);
 
   if (idx >= g->ngrid - 1)
     retval = mat_create_copy(g->fim[g->ngrid - 1]); 

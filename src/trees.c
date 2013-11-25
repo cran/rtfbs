@@ -60,7 +60,7 @@ TreeNode *tr_new_from_file(FILE *f) {
 /** Parse a Newick-formatted tree from a character string */
 TreeNode *tr_new_from_string(const char *treestr) { 
   TreeNode *root, *node, *newnode;
-  int i, in_distance = FALSE, in_label=FALSE, len = strlen(treestr), nopen_parens = 0,
+  int i, in_distance = FALSE, in_label=FALSE, len = (int)strlen(treestr), nopen_parens = 0,
     nclose_parens = 0, already_allowed = FALSE;
   char c;
   String *diststr = str_new(STR_SHORT_LEN), *labelstr = str_new(STR_SHORT_LEN);
@@ -288,7 +288,7 @@ void tr_print(FILE* f, TreeNode *root, int show_branch_lengths) {
 
   /* It's simplest to do this recursively. */
   tr_print_recur(f, root, show_branch_lengths);
-  len = strlen(root->name);
+  len = (int)strlen(root->name);
   if (len == 0 || root->name[len-1] != ';')
     fprintf(f, ";");
   fprintf(f, "\n");
@@ -727,10 +727,10 @@ void tr_layout_xy(TreeNode *tree,
       n = lst_get_ptr(traversal, i); 
       if (horizontal == 0) 
         y[n->id] = n->parent == NULL ? y0 :
-          y[n->parent->id] - n->dparent*scale;
+          y[n->parent->id] - (int)(n->dparent*scale);
       else
         x[n->id] = n->parent == NULL ? x0 :
-          x[n->parent->id] + n->dparent*scale;
+          x[n->parent->id] + (int)(n->dparent*scale);
     }
   }
 } 
@@ -785,7 +785,7 @@ basefont setfont\n");
         yoffset = -6;
       }
       else {
-        xoffset = -3 * (n->name != NULL ? strlen(n->name) : 0);
+        xoffset = -3 * (n->name != NULL ? (int)strlen(n->name) : 0);
         yoffset = -18;
       }
 
@@ -1334,14 +1334,31 @@ void tr_partition_nodes(TreeNode *tree, TreeNode *sub, List *inside,
   sfree(mark);
 }
 
+
+/* recursive version of tr_leaf_names that works for nodes that are
+   not the root of the tree */
+void tr_leaf_names_rec(TreeNode *tree, List *rv) {
+  if (tree->lchild == NULL) 
+    lst_push_ptr(rv, str_new_charstr(tree->name));
+  else {
+    tr_leaf_names_rec(tree->lchild, rv);
+    tr_leaf_names_rec(tree->rchild, rv);
+  }
+}
+
 /** Return a list of the leaf names in a given tree */
 List *tr_leaf_names(TreeNode *tree) {
   List *retval = lst_new_ptr((tree->nnodes + 1) / 2);
   int i;
-  for (i = 0; i < tree->nnodes; i++) {
-    TreeNode *n = lst_get_ptr(tree->nodes, i);
-    if (n->lchild == NULL && n->rchild == NULL)
-      lst_push_ptr(retval, str_new_charstr(n->name));
+  if (tree->nodes == NULL) {
+    // do this recursively if tree->nodes is NULL (usually true for non-root nodes)
+    tr_leaf_names_rec(tree, retval);
+  } else {
+    for (i = 0; i < tree->nnodes; i++) {
+      TreeNode *n = lst_get_ptr(tree->nodes, i);
+      if (n->lchild == NULL && n->rchild == NULL)
+	lst_push_ptr(retval, str_new_charstr(n->name));
+    }
   }
   return retval;
 }
