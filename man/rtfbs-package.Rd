@@ -14,21 +14,20 @@ RTFBS identifies and scores possible Transcription Factor
 }
 \details{
 \tabular{ll}{
-Copyright: \tab The code in src/pcre is Copyright (c) 1997-2010 University\cr
-\tab of Cambridge.  All other code is Copyright (c) 2002-2011 University\cr
-\tab of California, Cornell University.\cr
+Copyright: \tab Copyright (c) 2002-2015 University of California, Cornell\cr
+\tab University\cr
 Package: \tab rtfbs\cr
 License: \tab BSD_3_clause + file LICENSE\cr
-Version: \tab 0.3.2\cr
-URL: \tab http://compgen.bscb.cornell.edu/rtfbs\cr
-Date: \tab 2013-11-25\cr
+Version: \tab 0.3.3\cr
+URL: \tab http://compgen.cshl.edu/rtfbs\cr
+Date: \tab 2015-01-08\cr
 Imports: \tab \cr
 \tab rphast\cr
 Depends: \tab \cr
 \tab stats\cr
 Collate: \tab \cr
 \tab 'tfbs.R'\cr
-Built: \tab R 3.0.2; x86_64-pc-linux-gnu; 2013-12-06 18:55:09 UTC; unix\cr
+Built: \tab R 3.1.2; x86_64-unknown-linux-gnu; 2015-01-12 22:22:51 UTC; unix\cr
 }
 
 Index:
@@ -63,11 +62,6 @@ split.ms                Split sequences
 summary.ms              MS Summary
 write.mm                Write Markov Model to file
 write.ms                Writing MS Object to FASTA file
-}
-
-Further information is available in the following vignettes:
-\tabular{ll}{
-\code{vignette} \tab rtfbs (source)\cr
 }
 }
 \author{

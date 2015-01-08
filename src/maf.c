@@ -1,6 +1,6 @@
  /***************************************************************************
  * PHAST: PHylogenetic Analysis with Space/Time models
- * Copyright (c) 2002-2005 University of California, 2006-2010 Cornell 
+ * Copyright (c) 2002-2005 University of California, 2006-2010 Cornell
  * University.  All rights reserved.
  *
  * This source code is distributed under a BSD-style license.  See the
@@ -21,12 +21,12 @@
    be sorted with respect to the reference sequence.  Any blocks falling out
    of order, or which are redundant with previous blocks, will be discarded.
    This allows the MAF to be read in one pass.*/
-MSA *maf_read_cats_subset(FILE *F, FILE *REFSEQF, int tuple_size, 
-   char *alphabet, GFF_Set *gff, CategoryMap *cm, int cycle_size, 
-   int store_order, char *reverse_groups, int gap_strip_mode, 
+MSA *maf_read_cats_subset(FILE *F, FILE *REFSEQF, int tuple_size,
+   char *alphabet, GFF_Set *gff, CategoryMap *cm, int cycle_size,
+   int store_order, char *reverse_groups, int gap_strip_mode,
    int keep_overlapping, List *cats_to_do, List *seqnames, int seq_keep ) {
 
-  int i, start_idx, length, max_tuples, block_no,  
+  int i, start_idx, length, max_tuples, block_no,
     refseqlen = -1, do_toupper, last_refseqpos = -1;
   Hashtable *tuple_hash;
   Hashtable *name_hash = hsh_new(25);
@@ -44,10 +44,10 @@ MSA *maf_read_cats_subset(FILE *F, FILE *REFSEQF, int tuple_size,
                                           project if GFF (see comment
                                           above) */
 
-  if (tuple_size != 1) 
+  if (tuple_size != 1)
     phast_warning("Warning: reading in MAF with tuple_size > 1 loses information that crosses blocks");
 
-  if (gff ==  NULL && cm != NULL) 
+  if (gff ==  NULL && cm != NULL)
     die("ERROR: maf_read got non-null category map without a set of features");
   if (gff != NULL && cm == NULL) {
     cm = cm_new_from_features(gff);
@@ -55,12 +55,12 @@ MSA *maf_read_cats_subset(FILE *F, FILE *REFSEQF, int tuple_size,
   }
   if (gff != NULL && cycle_size > 0)
     die("ERROR: gff and cycle_size mutually exclusive in maf_read.\n");
-  
-  if (cats_to_do != NULL && (gff == NULL || cm == NULL)) 
+
+  if (cats_to_do != NULL && (gff == NULL || cm == NULL))
     die("ERROR: cats_to_do requires gff and cm != NULL in maf_read.\n");
 
   if (store_order) {
-    if (reverse_groups != NULL) 
+    if (reverse_groups != NULL)
       die("ERROR: Can't reverse complement if storing order in maf_read.\n");
     if (gap_strip_mode != NO_STRIP && gap_strip_mode != 1)
       die("ERROR: Gap strip mode must be either NO_STRIP or 1 if storing order in maf_read.\n");
@@ -106,13 +106,13 @@ MSA *maf_read_cats_subset(FILE *F, FILE *REFSEQF, int tuple_size,
     //look at first block to get initial sequence names and refseqlen
     maf_quick_peek(F, &msa->names, name_hash, &msa->nseqs, &refseqlen, 1);
   }
-  if (msa->nseqs == 0 || refseqlen==-1) 
+  if (msa->nseqs == 0 || refseqlen==-1)
     die("ERROR: got invalid maf file\n");
   if (map != NULL)
     map->seq_len = refseqlen;
 
   /* upcase chars unless there are lowercase characters in the alphabet */
-  do_toupper = !msa_alph_has_lowercase(msa);    
+  do_toupper = !msa_alph_has_lowercase(msa);
 
   /* init MSA object to be used for individual blocks */
   mini_msa = msa_new(NULL, msa->names, msa->nseqs, -1, alphabet);
@@ -135,26 +135,26 @@ MSA *maf_read_cats_subset(FILE *F, FILE *REFSEQF, int tuple_size,
 
   msa->length = 0;
   if (store_order) {
-    if (REFSEQF != NULL) 
+    if (REFSEQF != NULL)
       msa->alloc_len = msa->length = refseqlen;  //this may still not be big enough because of gaps in refseq
-    else 
+    else
       msa->alloc_len = 50000;
-    max_tuples =  max(1000000, (int)pow(strlen(msa->alphabet)+strlen(msa->missing)+1, 
+    max_tuples =  max(1000000, (int)pow(strlen(msa->alphabet)+strlen(msa->missing)+1,
 				   2 * msa->nseqs * tuple_size));
   }
-  else 
+  else
     max_tuples = min(1000000,
 		     (int)pow(strlen(msa->alphabet)+strlen(msa->missing)+1, 2 * msa->nseqs * tuple_size));
 
   if (max_tuples > 10000000 || max_tuples < 0) max_tuples = 10000000;
   if (max_tuples < 1000000) max_tuples = 1000000;
 
-  tuple_hash = hsh_new(max_tuples); 
-  ss_new(msa, tuple_size, max_tuples, gff != NULL || cycle_size > 0 ? 1 : 0, 
-         store_order); 
+  tuple_hash = hsh_new(max_tuples);
+  ss_new(msa, tuple_size, max_tuples, gff != NULL || cycle_size > 0 ? 1 : 0,
+         store_order);
 
   if (store_order) {
-    for (i = 0; i < msa->length; i++) 
+    for (i = 0; i < msa->length; i++)
       msa->ss->tuple_idx[i] = -1;
   }
 
@@ -195,7 +195,7 @@ MSA *maf_read_cats_subset(FILE *F, FILE *REFSEQF, int tuple_size,
     }
     /* also ignore if block size is less than tuple size */
     if (length < tuple_size)  {
-      continue; 
+      continue;
     }
 
     if (first_idx == -1) {
@@ -224,10 +224,10 @@ MSA *maf_read_cats_subset(FILE *F, FILE *REFSEQF, int tuple_size,
 	else {
 	  if (gaplen > 0) {
 	    gap_sum += gaplen;
-	    if (idx == msa->idx_offset) 
+	    if (idx == msa->idx_offset)
 	      lst_set_int(map->msa_list, 0, gap_sum + 1);
-	    else if (idx == last_gap_start) 
-	      lst_set_int(map->msa_list, lst_size(map->msa_list)-1, 
+	    else if (idx == last_gap_start)
+	      lst_set_int(map->msa_list, lst_size(map->msa_list)-1,
 			  idx + gap_sum + 1 - msa->idx_offset);
 	    else {
 	      lst_push_int(map->msa_list, idx + gap_sum + 1 - msa->idx_offset);
@@ -244,8 +244,8 @@ MSA *maf_read_cats_subset(FILE *F, FILE *REFSEQF, int tuple_size,
       if (gaplen > 0) {
 	gapsum_block += gaplen;
 	gap_sum += gaplen;
-	if (idx == last_gap_start) 
-	  lst_set_int(map->msa_list, lst_size(map->msa_list)-1, 
+	if (idx == last_gap_start)
+	  lst_set_int(map->msa_list, lst_size(map->msa_list)-1,
 		      idx + gap_sum + 1 - msa->idx_offset);
 	else {
 	  lst_push_int(map->msa_list, idx + gap_sum + 1 - msa->idx_offset);
@@ -257,18 +257,18 @@ MSA *maf_read_cats_subset(FILE *F, FILE *REFSEQF, int tuple_size,
       if (msa->length > msa->alloc_len) {
       	msa_realloc(msa, msa->length, max(2 * msa->length, idx + gap_sum), 0,
 		    store_order);
-	
+
 		    }*/
     } /* end coordinate map section */
-    
-    if (gap_strip_mode != NO_STRIP) 
+
+    if (gap_strip_mode != NO_STRIP)
       msa_strip_gaps(mini_msa, gap_strip_mode);
 
     if (gff != NULL) {
       /* extract subset of features in GFF corresponding to block */
       lst_clear(mini_gff->features);
-      maf_block_sub_gff(mini_gff, gff, start_idx + 1, start_idx + length, 
-                        &gff_idx, cm, reverse_groups != NULL, tuple_size); 
+      maf_block_sub_gff(mini_gff, gff, start_idx + 1, start_idx + length,
+                        &gff_idx, cm, reverse_groups != NULL, tuple_size);
                                 /* coords in GFF are 1-based */
 
       /* if we're not using a global coordinate map, we need to map the
@@ -283,7 +283,7 @@ MSA *maf_read_cats_subset(FILE *F, FILE *REFSEQF, int tuple_size,
       }
 
       /* now label categories of mini_msa accordingly */
-      msa_label_categories(mini_msa, mini_gff, cm);   
+      msa_label_categories(mini_msa, mini_gff, cm);
     }
     else if (cycle_size > 0)
       for (i = 0; i < mini_msa->length; i++)
@@ -296,7 +296,7 @@ MSA *maf_read_cats_subset(FILE *F, FILE *REFSEQF, int tuple_size,
       if (idx_offset < 0)
 	die("ERROR maf_read_subset: invalid idx_offset %i\n", idx_offset);
 
-      /* when the reference sequence begins with gaps, 
+      /* when the reference sequence begins with gaps,
          start_idx will actually map to the first *non-gap*
          character; we have to adjust accordingly */
       for (i = 0; mini_msa->seqs[0][i] == GAP_CHAR; i++) idx_offset--;
@@ -305,13 +305,13 @@ MSA *maf_read_cats_subset(FILE *F, FILE *REFSEQF, int tuple_size,
 	die("ERROR maf_read_subset: invalid idx_offset2 %i\n", idx_offset);
     }
 
-    else if (store_order) idx_offset = start_idx - msa->idx_offset; 
+    else if (store_order) idx_offset = start_idx - msa->idx_offset;
 
     else idx_offset = -1;           /* no offset */
 
     /* extract the suff stats from the mini alignment and fold them
        into the new msa */
-    ss_from_msas(msa, tuple_size, store_order, cats_to_do, mini_msa, 
+    ss_from_msas(msa, tuple_size, store_order, cats_to_do, mini_msa,
                  tuple_hash, idx_offset, 0);
 
     if (gff != NULL) {          /* free features and clear list */
@@ -337,8 +337,8 @@ MSA *maf_read_cats_subset(FILE *F, FILE *REFSEQF, int tuple_size,
 
     if (REFSEQF != NULL) {
       refseq = msa_read_seq_fasta(REFSEQF);
-      if (refseq->length != refseqlen) 
-	die("ERROR: reference sequence length (%d) does not match description in MAF file (%d).\n", 
+      if (refseq->length != refseqlen)
+	die("ERROR: reference sequence length (%d) does not match description in MAF file (%d).\n",
 	    refseq->length, refseqlen);
     }
     else {
@@ -353,7 +353,7 @@ MSA *maf_read_cats_subset(FILE *F, FILE *REFSEQF, int tuple_size,
       refseq->length = last_idx - first_idx;
     }
 
-    for (offset = -1 * (tuple_size-1); offset <= 0; offset++) 
+    for (offset = -1 * (tuple_size-1); offset <= 0; offset++)
       for (i = 1; i < msa->nseqs; i++)
 	tuple_str[tuple_size*i + tuple_size -1 + offset] = msa->missing[0];
     tuple_str[msa->nseqs * tuple_size] = '\0';
@@ -367,23 +367,23 @@ MSA *maf_read_cats_subset(FILE *F, FILE *REFSEQF, int tuple_size,
 
       /* use the coord map but avoid a separate lookup at each position */
       if (map != NULL) {
-        if (lst_get_int(map->seq_list, map_idx) - 1 == i + msa->idx_offset) 
+        if (lst_get_int(map->seq_list, map_idx) - 1 == i + msa->idx_offset)
           msa_idx = lst_get_int(map->msa_list, map_idx++) - 1;
       }
       else msa_idx = i;
 
       if (msa_idx >= msa->length)
 	msa_realloc(msa, msa_idx+1, msa_idx + 10000, 0, store_order);
-      
+
       if (msa_idx < 0)
 	die("ERROR maf_read_subset: msa_idx=%i, should be >=0\n",
 	    msa_idx);
 
-      /* simple hack to handle the case where order is stored but 
+      /* simple hack to handle the case where order is stored but
          refseq is not available: use the char from the alignment if
          available or a missing-data char otherwise */
-      if (REFSEQF == NULL) 
-        refseq->chars[i] = msa->ss->tuple_idx[msa_idx] == -1 ? 
+      if (REFSEQF == NULL)
+        refseq->chars[i] = msa->ss->tuple_idx[msa_idx] == -1 ?
           msa->missing[1] :
           ss_get_char_pos(msa, msa_idx, 0, 0);
 
@@ -412,7 +412,7 @@ MSA *maf_read_cats_subset(FILE *F, FILE *REFSEQF, int tuple_size,
         }
 
         if (tuple_idx == -1) {  /* need full hash lookup */
-          for (offset = -1 * (tuple_size-1); offset <= 0; offset++) 
+          for (offset = -1 * (tuple_size-1); offset <= 0; offset++)
 	    tuple_str[tuple_size-1 + offset] =
               i+offset >= 0 ? refseq->chars[i+offset] : msa->missing[1];
 
@@ -445,7 +445,7 @@ MSA *maf_read_cats_subset(FILE *F, FILE *REFSEQF, int tuple_size,
 	    ss_get_char_pos(msa, msa_idx, 0, 0) != GAP_CHAR) {
 	  /* here a tuple is available for this position but it does not
 	     match the sequence */
-	  
+
 	  /* (make an exception if both chars are not in the alphabet,
            to allow for differences in ambiguity characters) */
         if (msa->inv_alphabet[(int)ss_get_char_pos(msa, msa_idx, 0, 0)] == -1 &&
@@ -456,15 +456,15 @@ MSA *maf_read_cats_subset(FILE *F, FILE *REFSEQF, int tuple_size,
             msa->is_missing[(int)refseq->chars[i]])
           ;                     /* okay */
         /* (also make an exception if one is softmasked and the other isn't) */
-        else if (!do_toupper && toupper(refseq->chars[i]) == 
+        else if (!do_toupper && toupper(refseq->chars[i]) ==
             toupper(ss_get_char_pos(msa, msa_idx, 0, 0)))
           ;
-        else 
+        else
           die("ERROR: character '%c' at position %d of reference sequence does not match character '%c' given in MAF file.\n", refseq->chars[i], i, ss_get_char_pos(msa, msa_idx, 0, 0));
       }
       }
     }
-    
+
     str_free(refseq);
     sfree(fasthash);
   }
@@ -485,17 +485,17 @@ MSA *maf_read_cats_subset(FILE *F, FILE *REFSEQF, int tuple_size,
 }
 
 
-MSA *maf_read_cats(FILE *F, FILE *REFSEQF, int tuple_size,  
+MSA *maf_read_cats(FILE *F, FILE *REFSEQF, int tuple_size,
 	char *alphabet,  GFF_Set *gff,   CategoryMap *cm, int cycle_size,
 	int store_order,  char *reverse_groups, int gap_strip_mode,
 	int keep_overlapping,List *cats_to_do) {
   return maf_read_cats_subset(F, REFSEQF, tuple_size, alphabet, gff, cm, cycle_size,
-			      store_order, reverse_groups, gap_strip_mode, 
+			      store_order, reverse_groups, gap_strip_mode,
 			      keep_overlapping, cats_to_do, NULL, 0);
 }
 
 MSA *maf_read(FILE *F, FILE *REFSEQF, int tuple_size, char *alphabet,
-	      GFF_Set *gff, CategoryMap *cm, int cycle_size, int store_order, 
+	      GFF_Set *gff, CategoryMap *cm, int cycle_size, int store_order,
 	      char *reverse_groups, int gap_strip_mode, int keep_overlapping) {
   return maf_read_cats(F, REFSEQF, tuple_size, alphabet, gff, cm, cycle_size, store_order,
 		reverse_groups, gap_strip_mode, keep_overlapping, NULL);
@@ -506,10 +506,10 @@ MSA *maf_read(FILE *F, FILE *REFSEQF, int tuple_size, char *alphabet,
    constructed explicitly; instead, a sufficient-statistics
    representation will be extracted directly from the MAF.  Blocks
    corresponding to overlapping segments of the reference sequence are
-   permitted, but all except the first one will be discarded.  */  
+   permitted, but all except the first one will be discarded.  */
 MSA *maf_read_unsorted(FILE *F, FILE *REFSEQF, int tuple_size, char *alphabet,
 	 GFF_Set *gff, CategoryMap *cm, int cycle_size, int store_order,
-	 char *reverse_groups, int gap_strip_mode, int keep_overlapping, 
+	 char *reverse_groups, int gap_strip_mode, int keep_overlapping,
 	 List *cats_to_do ) {
 
 /* NOTE: for now, if a GFF is defined, then all blocks are projected
@@ -521,10 +521,10 @@ MSA *maf_read_unsorted(FILE *F, FILE *REFSEQF, int tuple_size, char *alphabet,
 
 /* Note: this is the original version of maf_read which does NOT require the
    MAF file to be sorted with respect to the reference sequence.  As a result,
-   it has to read through the MAF file twice to build a map, which can be 
+   it has to read through the MAF file twice to build a map, which can be
    quite slow with large MAF files */
 
-  int i, start_idx, length, max_tuples, block_no, rbl_idx, 
+  int i, start_idx, length, max_tuples, block_no, rbl_idx,
     refseqlen = -1, do_toupper;
   Hashtable *tuple_hash;
   Hashtable *name_hash = hsh_new(25);
@@ -539,14 +539,14 @@ MSA *maf_read_unsorted(FILE *F, FILE *REFSEQF, int tuple_size, char *alphabet,
                                           project if GFF (see comment
                                           above) */
 
-  if ((gff == NULL && cm != NULL) || (gff != NULL && cm == NULL)) 
+  if ((gff == NULL && cm != NULL) || (gff != NULL && cm == NULL))
     die("ERROR: maf_read should be passed either both a set of features and a category map, or neither one.\n");
 
   if (gff != NULL && cycle_size > 0)
     die("ERROR: gff and cycle_size mutually exclusive in maf_read.\n");
 
   if (store_order) {
-    if (reverse_groups != NULL) 
+    if (reverse_groups != NULL)
       die("ERROR: Can't reverse complement if storing order in maf_read.\n");
     if (gap_strip_mode != NO_STRIP && gap_strip_mode != 1)
       die("ERROR: Gap strip mode must be either NO_STRIP or 1 if storing order in maf_read.\n");
@@ -565,7 +565,7 @@ MSA *maf_read_unsorted(FILE *F, FILE *REFSEQF, int tuple_size, char *alphabet,
      initialize msa accordingly.  Simultaneously build coordinate map,
      if necessary */
   msa = msa_new(NULL, NULL, -1, 0, alphabet);
-  maf_peek(F, &msa->names, name_hash, &msa->nseqs, map, redundant_blocks, 
+  maf_peek(F, &msa->names, name_hash, &msa->nseqs, map, redundant_blocks,
            keep_overlapping, &refseqlen);
   /* NOTE: it seems as if this could be avoided when store_order == 0,
      but things would become quite a lot more complicated; e.g., if a
@@ -573,7 +573,7 @@ MSA *maf_read_unsorted(FILE *F, FILE *REFSEQF, int tuple_size, char *alphabet,
      encountered tuples would have to be redefined  */
 
   /* upcase chars unless there are lowercase characters in the alphabet */
-  do_toupper = !msa_alph_has_lowercase(msa);    
+  do_toupper = !msa_alph_has_lowercase(msa);
 
   /* init MSA object to be used for individual blocks */
   mini_msa = msa_new(NULL, msa->names, msa->nseqs, -1, alphabet);
@@ -599,7 +599,7 @@ MSA *maf_read_unsorted(FILE *F, FILE *REFSEQF, int tuple_size, char *alphabet,
     max_tuples = min(msa->length,
                      (int)pow(strlen(msa->alphabet)+strlen(msa->missing)+1, msa->nseqs * tuple_size));
     if (max_tuples < 0) max_tuples = msa->length;
-    if (max_tuples > 1000000) max_tuples = 1000000; 
+    if (max_tuples > 1000000) max_tuples = 1000000;
   }
   else {
     msa->length = 0;
@@ -608,9 +608,9 @@ MSA *maf_read_unsorted(FILE *F, FILE *REFSEQF, int tuple_size, char *alphabet,
     if (max_tuples < 0) max_tuples = 50000;
   }
 
-  tuple_hash = hsh_new(max_tuples); 
-  ss_new(msa, tuple_size, max_tuples, gff != NULL || cycle_size > 0 ? 1 : 0, 
-         store_order); 
+  tuple_hash = hsh_new(max_tuples);
+  ss_new(msa, tuple_size, max_tuples, gff != NULL || cycle_size > 0 ? 1 : 0,
+         store_order);
 
   if (store_order)
     for (i = 0; i < msa->length; i++) msa->ss->tuple_idx[i] = -1;
@@ -618,7 +618,7 @@ MSA *maf_read_unsorted(FILE *F, FILE *REFSEQF, int tuple_size, char *alphabet,
   /* process MAF one block at a time */
   block_no = 0;
   rbl_idx = 0;
-  while (maf_read_block(F, mini_msa, name_hash, &start_idx, 
+  while (maf_read_block(F, mini_msa, name_hash, &start_idx,
                         &length, do_toupper) != EOF) {
     int idx_offset;
     checkInterruptN(block_no, 1000);
@@ -631,17 +631,17 @@ MSA *maf_read_unsorted(FILE *F, FILE *REFSEQF, int tuple_size, char *alphabet,
     }
 
     /* also ignore if block size is less than tuple size */
-    if (length < tuple_size) 
-      continue; 
+    if (length < tuple_size)
+      continue;
 
-    if (gap_strip_mode != NO_STRIP) 
+    if (gap_strip_mode != NO_STRIP)
       msa_strip_gaps(mini_msa, gap_strip_mode);
 
     if (gff != NULL) {
       /* extract subset of features in GFF corresponding to block */
       lst_clear(mini_gff->features);
-      maf_block_sub_gff(mini_gff, gff, start_idx + 1, start_idx + length, 
-                        &gff_idx, cm, reverse_groups != NULL, tuple_size); 
+      maf_block_sub_gff(mini_gff, gff, start_idx + 1, start_idx + length,
+                        &gff_idx, cm, reverse_groups != NULL, tuple_size);
                                 /* coords in GFF are 1-based */
 
       /* if we're not using a global coordinate map, we need to map the
@@ -656,7 +656,7 @@ MSA *maf_read_unsorted(FILE *F, FILE *REFSEQF, int tuple_size, char *alphabet,
       }
 
       /* now label categories of mini_msa accordingly */
-      msa_label_categories(mini_msa, mini_gff, cm);   
+      msa_label_categories(mini_msa, mini_gff, cm);
     }
     else if (cycle_size > 0)
       for (i = 0; i < mini_msa->length; i++)
@@ -667,7 +667,7 @@ MSA *maf_read_unsorted(FILE *F, FILE *REFSEQF, int tuple_size, char *alphabet,
     if (map != NULL) {
       idx_offset = msa_map_seq_to_msa(map, start_idx + 1) - 1;
 
-      /* when the reference sequence begins with gaps, 
+      /* when the reference sequence begins with gaps,
          start_idx will actually map to the first *non-gap*
          character; we have to adjust accordingly */
       for (i = 0; mini_msa->seqs[0][i] == GAP_CHAR; i++) idx_offset--;
@@ -676,13 +676,13 @@ MSA *maf_read_unsorted(FILE *F, FILE *REFSEQF, int tuple_size, char *alphabet,
 	die("ERROR maf_read_unsorted: idx_offset=%i\n", idx_offset);
     }
 
-    else if (store_order) idx_offset = start_idx; 
+    else if (store_order) idx_offset = start_idx;
 
     else idx_offset = -1;           /* no offset */
 
     /* extract the suff stats from the mini alignment and fold them
        into the new msa */
-    ss_from_msas(msa, tuple_size, store_order, cats_to_do, mini_msa, 
+    ss_from_msas(msa, tuple_size, store_order, cats_to_do, mini_msa,
                  tuple_hash, idx_offset, 0);
 
     if (gff != NULL) {          /* free features and clear list */
@@ -713,11 +713,11 @@ MSA *maf_read_unsorted(FILE *F, FILE *REFSEQF, int tuple_size, char *alphabet,
     }
 
     if ((map == NULL && refseq->length != refseqlen) ||
-        (map != NULL && refseq->length != map->seq_len)) 
-      die("ERROR: reference sequence length (%d) does not match description in MAF file (%d).\n", 
+        (map != NULL && refseq->length != map->seq_len))
+      die("ERROR: reference sequence length (%d) does not match description in MAF file (%d).\n",
           refseq->length, map == NULL ? refseqlen : map->seq_len);
 
-    for (offset = -1 * (tuple_size-1); offset <= 0; offset++) 
+    for (offset = -1 * (tuple_size-1); offset <= 0; offset++)
       for (i = 1; i < msa->nseqs; i++)
 	tuple_str[i*tuple_size + tuple_size - 1 + offset] = msa->missing[0];
     tuple_str[msa->nseqs * tuple_size] = '\0';
@@ -729,7 +729,7 @@ MSA *maf_read_unsorted(FILE *F, FILE *REFSEQF, int tuple_size, char *alphabet,
 
       /* use the coord map but avoid a separate lookup at each position */
       if (map != NULL) {
-        if (lst_get_int(map->seq_list, map_idx) - 1 == i) 
+        if (lst_get_int(map->seq_list, map_idx) - 1 == i)
           msa_idx = lst_get_int(map->msa_list, map_idx++) - 1;
       }
       else msa_idx = i;
@@ -737,11 +737,11 @@ MSA *maf_read_unsorted(FILE *F, FILE *REFSEQF, int tuple_size, char *alphabet,
       if (msa_idx < 0)
 	die("ERROR maf_read_unsorted: msa_idx=%i\n", msa_idx);
 
-      /* simple hack to handle the case where order is stored but 
+      /* simple hack to handle the case where order is stored but
          refseq is not available: use the char from the alignment if
          available or a missing-data char otherwise */
-      if (REFSEQF == NULL) 
-        refseq->chars[i] = msa->ss->tuple_idx[msa_idx] == -1 ? 
+      if (REFSEQF == NULL)
+        refseq->chars[i] = msa->ss->tuple_idx[msa_idx] == -1 ?
           msa->missing[1] :
           ss_get_char_pos(msa, msa_idx, 0, 0);
 
@@ -770,8 +770,8 @@ MSA *maf_read_unsorted(FILE *F, FILE *REFSEQF, int tuple_size, char *alphabet,
         }
 
         if (tuple_idx == -1) {  /* need full hash lookup */
-          for (offset = -1 * (tuple_size-1); offset <= 0; offset++) 
-	    tuple_str[tuple_size - 1 + offset] = 
+          for (offset = -1 * (tuple_size-1); offset <= 0; offset++)
+	    tuple_str[tuple_size - 1 + offset] =
               i+offset >= 0 ? refseq->chars[i+offset] : msa->missing[1];
 	  if ((tuple_idx = ss_lookup_coltuple(tuple_str, tuple_hash, msa)) == -1) {
                                 /* tuple isn't in hash yet; have to add */
@@ -812,14 +812,14 @@ MSA *maf_read_unsorted(FILE *F, FILE *REFSEQF, int tuple_size, char *alphabet,
             msa->is_missing[(int)refseq->chars[i]])
           ;                     /* okay */
         /* (also make an exception if one is softmasked and the other isn't) */
-        else if (!do_toupper && toupper(refseq->chars[i]) == 
+        else if (!do_toupper && toupper(refseq->chars[i]) ==
             toupper(ss_get_char_pos(msa, msa_idx, 0, 0)))
           ;
-        else 
+        else
           die("ERROR: character '%c' at position %d of reference sequence does not match character '%c' given in MAF file.\n", refseq->chars[i], i, ss_get_char_pos(msa, msa_idx, 0, 0));
       }
     }
-    
+
     str_free(refseq);
     sfree(fasthash);
   }
@@ -833,7 +833,7 @@ MSA *maf_read_unsorted(FILE *F, FILE *REFSEQF, int tuple_size, char *alphabet,
   hsh_free(name_hash);
   lst_free(redundant_blocks);
   if (map != NULL) msa_map_free(map);
-  
+
   return msa;
 }
 
@@ -854,7 +854,7 @@ MSA *maf_read_old(FILE *f, FILE *REFSEQF, int tuple_size, char *alphabet,
    pointers are provided.  Uses provided hash to map sequence names to
    sequence indices (prefix of name wrt '.' character); sequences not
    present in a block will be represented by missing-data characters. */
-int maf_read_block_addseq(FILE *F, MSA *mini_msa, Hashtable *name_hash, 
+int maf_read_block_addseq(FILE *F, MSA *mini_msa, Hashtable *name_hash,
 			  int *start_idx, int *length, int do_toupper,
 			  int skip_new_species) {
 
@@ -871,7 +871,7 @@ int maf_read_block_addseq(FILE *F, MSA *mini_msa, Hashtable *name_hash,
     if (str_starts_with_charstr(linebuffer, "#") ||
         str_starts_with_charstr(linebuffer, "i ") ||
         str_starts_with_charstr(linebuffer, "e ") ||
-        str_starts_with_charstr(linebuffer, "q ")) 
+        str_starts_with_charstr(linebuffer, "q "))
       continue;                 /* ignore i, e, and q lines for now */
     else if (str_starts_with_charstr(linebuffer, "a")) {
       if (mini_msa->length == -1) continue;   /* assume first block (?) */
@@ -883,8 +883,8 @@ int maf_read_block_addseq(FILE *F, MSA *mini_msa, Hashtable *name_hash,
     if (linebuffer->length == 0) continue;
 
     /* if we get here, linebuffer should contain a sequence line */
-    str_split(linebuffer, NULL, l);    
-    if (lst_size(l) != 7 || !str_equals_charstr(lst_get_ptr(l, 0), "s")) 
+    str_split(linebuffer, NULL, l);
+    if (lst_size(l) != 7 || !str_equals_charstr(lst_get_ptr(l, 0), "s"))
       die("ERROR: bad sequence line in MAF file --\n\t\"%s\"\n", linebuffer->chars);
     str_cpy(this_name, lst_get_ptr(l, 1));
     str_shortest_root(this_name, '.');
@@ -892,7 +892,7 @@ int maf_read_block_addseq(FILE *F, MSA *mini_msa, Hashtable *name_hash,
 
     /* if this is the reference sequence, also grab start_idx and
        length and check strand */
-    if (mini_msa->length == -1 && 
+    if (mini_msa->length == -1 &&
         ((start_idx != NULL && str_as_int(lst_get_ptr(l, 2), start_idx) != 0) ||
         (length != NULL && str_as_int(lst_get_ptr(l, 3), length) != 0) ||
         ((String*)lst_get_ptr(l, 4))->chars[0] != '+')) {
@@ -900,7 +900,7 @@ int maf_read_block_addseq(FILE *F, MSA *mini_msa, Hashtable *name_hash,
     }
 
     /* ensure lengths of all seqs are consistent */
-    if (mini_msa->length == -1) 
+    if (mini_msa->length == -1)
       mini_msa->length = this_seq->length;
     else if (this_seq->length != mini_msa->length) {
       die("ERROR: sequence lengths do not match in MAF block -- \n\tsee line \"%s\"\n", linebuffer->chars);
@@ -924,25 +924,25 @@ int maf_read_block_addseq(FILE *F, MSA *mini_msa, Hashtable *name_hash,
     if (this_seq->length > mini_msa->alloc_len) {
       mini_msa->alloc_len = this_seq->length;
       for (i = 0; i < mini_msa->nseqs; i++)
-        mini_msa->seqs[i] = 
+        mini_msa->seqs[i] =
           srealloc(mini_msa->seqs[i], (mini_msa->alloc_len+1) * sizeof(char));
-      if (mini_msa->ncats >= 0) 
-        mini_msa->categories = 
-          srealloc(mini_msa->categories, mini_msa->alloc_len * sizeof(int)); 
+      if (mini_msa->ncats >= 0)
+        mini_msa->categories =
+          srealloc(mini_msa->categories, mini_msa->alloc_len * sizeof(int));
     }
 
     for (i = 0; i < this_seq->length; i++) {
-      mini_msa->seqs[seqidx][i] = do_toupper ? (char)toupper(this_seq->chars[i]) : 
+      mini_msa->seqs[seqidx][i] = do_toupper ? (char)toupper(this_seq->chars[i]) :
         this_seq->chars[i];
-      if (mini_msa->seqs[seqidx][i] == '.' && mini_msa->inv_alphabet[(int)'.'] == -1) 
+      if (mini_msa->seqs[seqidx][i] == '.' && mini_msa->inv_alphabet[(int)'.'] == -1)
         mini_msa->seqs[seqidx][i] = mini_msa->missing[0];
-      if (mini_msa->seqs[seqidx][i] != GAP_CHAR && 
+      if (mini_msa->seqs[seqidx][i] != GAP_CHAR &&
           !mini_msa->is_missing[(int)mini_msa->seqs[seqidx][i]] &&
           mini_msa->inv_alphabet[(int)mini_msa->seqs[seqidx][i]] == -1 &&
 	  get_iupac_map()[(int)mini_msa->seqs[seqidx][i]] == NULL) {
         if (isalpha(mini_msa->seqs[seqidx][i]))
           mini_msa->seqs[seqidx][i] = 'N';
-        else 
+        else
           die("ERROR: unrecognized character in sequence in MAF block ('%c')\n",
               mini_msa->seqs[seqidx][i]);
       }
@@ -966,7 +966,7 @@ int maf_read_block_addseq(FILE *F, MSA *mini_msa, Hashtable *name_hash,
   /* pad unmarked seqs with missing-data characters */
   for (i = 0; i < mini_msa->nseqs; i++) {
     if (!mark[i]) {
-      for (j = 0; j < mini_msa->length; j++) 
+      for (j = 0; j < mini_msa->length; j++)
         mini_msa->seqs[i][j] = mini_msa->missing[0];
       mini_msa->seqs[i][mini_msa->length] = '\0';
     }
@@ -1001,7 +1001,7 @@ int maf_read_block(FILE *F, MSA *mini_msa, Hashtable *name_hash,
     if (str_starts_with_charstr(linebuffer, "#") ||
         str_starts_with_charstr(linebuffer, "i ") ||
         str_starts_with_charstr(linebuffer, "e ") ||
-        str_starts_with_charstr(linebuffer, "q ")) 
+        str_starts_with_charstr(linebuffer, "q "))
       continue;                 /* ignore i, e, and q lines for now */
     else if (str_starts_with_charstr(linebuffer, "a")) {
       if (mini_msa->length == -1) continue;   /* assume first block (?) */
@@ -1013,7 +1013,7 @@ int maf_read_block(FILE *F, MSA *mini_msa, Hashtable *name_hash,
     if (linebuffer->length == 0) continue;
 
     /* if we get here, linebuffer should contain a sequence line */
-    str_split(linebuffer, NULL, l);    
+    str_split(linebuffer, NULL, l);
     if (lst_size(l) != 7 || !str_equals_charstr(lst_get_ptr(l, 0), "s")) {
       die("ERROR: bad sequence line in MAF file --\n\t\"%s\"\n", linebuffer->chars);
     }
@@ -1023,7 +1023,7 @@ int maf_read_block(FILE *F, MSA *mini_msa, Hashtable *name_hash,
 
     /* if this is the reference sequence, also grab start_idx and
        length and check strand */
-    if (mini_msa->length == -1 && 
+    if (mini_msa->length == -1 &&
         ((start_idx != NULL && str_as_int(lst_get_ptr(l, 2), start_idx) != 0) ||
         (length != NULL && str_as_int(lst_get_ptr(l, 3), length) != 0) ||
         ((String*)lst_get_ptr(l, 4))->chars[0] != '+'))
@@ -1031,39 +1031,39 @@ int maf_read_block(FILE *F, MSA *mini_msa, Hashtable *name_hash,
 
     /* ensure lengths of all seqs are consistent */
     if (mini_msa->length == -1) mini_msa->length = this_seq->length;
-    else if (this_seq->length != mini_msa->length) 
+    else if (this_seq->length != mini_msa->length)
       die("ERROR: sequence lengths do not match in MAF block -- \n\tsee line \"%s\"\n", linebuffer->chars);
 
     /* enlarge allocated sequence lengths as necessary */
     if (this_seq->length > mini_msa->alloc_len) {
       mini_msa->alloc_len = this_seq->length;
       for (i = 0; i < mini_msa->nseqs; i++)
-        mini_msa->seqs[i] = 
+        mini_msa->seqs[i] =
           srealloc(mini_msa->seqs[i], (mini_msa->alloc_len+1) * sizeof(char));
-      if (mini_msa->ncats >= 0) 
-        mini_msa->categories = 
-          srealloc(mini_msa->categories, mini_msa->alloc_len * sizeof(int)); 
+      if (mini_msa->ncats >= 0)
+        mini_msa->categories =
+          srealloc(mini_msa->categories, mini_msa->alloc_len * sizeof(int));
     }
 
     /* obtain index of seq */
     seqidx = hsh_get_int(name_hash, this_name->chars);
-    if (seqidx == -1) 
+    if (seqidx == -1)
       die("ERROR: unexpected sequence name '%s' --\n\tsee line \"%s\"\n", this_name->chars, linebuffer->chars);
     if (!(str_equals_charstr(this_name, mini_msa->names[seqidx])))
       die("ERROR: maf_read_block: %s != %s\n", this_name->chars, mini_msa->names[seqidx]);
 
     for (i = 0; i < this_seq->length; i++) {
-      mini_msa->seqs[seqidx][i] = do_toupper ? (char)toupper(this_seq->chars[i]) : 
+      mini_msa->seqs[seqidx][i] = do_toupper ? (char)toupper(this_seq->chars[i]) :
         this_seq->chars[i];
-      if (mini_msa->seqs[seqidx][i] == '.' && mini_msa->inv_alphabet[(int)'.'] == -1) 
+      if (mini_msa->seqs[seqidx][i] == '.' && mini_msa->inv_alphabet[(int)'.'] == -1)
         mini_msa->seqs[seqidx][i] = mini_msa->missing[0];
-      if (mini_msa->seqs[seqidx][i] != GAP_CHAR && 
+      if (mini_msa->seqs[seqidx][i] != GAP_CHAR &&
           !mini_msa->is_missing[(int)mini_msa->seqs[seqidx][i]] &&
           mini_msa->inv_alphabet[(int)mini_msa->seqs[seqidx][i]] == -1 &&
 	  get_iupac_map()[(int)mini_msa->seqs[seqidx][i]] == NULL) {
         if (isalpha(mini_msa->seqs[seqidx][i]))
           mini_msa->seqs[seqidx][i] = 'N';
-        else 
+        else
           die("ERROR: unrecognized character in sequence in MAF block ('%c')\n",
               mini_msa->seqs[seqidx][i]);
       }
@@ -1077,7 +1077,7 @@ int maf_read_block(FILE *F, MSA *mini_msa, Hashtable *name_hash,
   lst_free(l);
   str_free(linebuffer);
 
-  if (mini_msa->length == -1 && !more_blocks) 
+  if (mini_msa->length == -1 && !more_blocks)
     return EOF;                 /* in this case, an EOF must have been
                                    encountered before any alignment
                                    blocks were found */
@@ -1086,7 +1086,7 @@ int maf_read_block(FILE *F, MSA *mini_msa, Hashtable *name_hash,
   /* pad unmarked seqs with missing-data characters */
   for (i = 0; i < mini_msa->nseqs; i++) {
     if (!mark[i]) {
-      for (j = 0; j < mini_msa->length; j++) 
+      for (j = 0; j < mini_msa->length; j++)
         mini_msa->seqs[i][j] = mini_msa->missing[0];
       mini_msa->seqs[i][mini_msa->length] = '\0';
     }
@@ -1108,7 +1108,7 @@ int gap_pair_compare(const void* ptr1, const void* ptr2) {
 }
 
 
-/* Scan the first block of a MAF file to get a partial list of 
+/* Scan the first block of a MAF file to get a partial list of
    sequence names (only roots of names are considered), and fill
    the hashtable with these names and a corresponding sequence
    index.  Also get the length of refseq.  If add_seqs==0 will
@@ -1129,7 +1129,7 @@ void maf_quick_peek(FILE *F, char ***names, Hashtable *name_hash, int *nseqs, in
 
   while (str_readline(line, F) != EOF) {
     linenum++;
-    //if second line is comment, assume it contains parameters as 
+    //if second line is comment, assume it contains parameters as
     //described by UCSC specification.  If a tree is found, use it
     if (linenum==2 && line->chars[0]=='#') {
       inParens=0;
@@ -1182,10 +1182,10 @@ void maf_quick_peek(FILE *F, char ***names, Hashtable *name_hash, int *nseqs, in
 	  die("cannot disregard reference species (%s) when reading MAF file", name->chars);
 	}
         str_split(line, NULL, l);
-        if (lst_size(l) != 7 || 
+        if (lst_size(l) != 7 ||
             str_as_int(lst_get_ptr(l, 2), &startidx) != 0 ||
             str_as_int(lst_get_ptr(l, 3), &length) != 0 ||
-            str_as_int(lst_get_ptr(l, 5), &tmp) != 0) 
+            str_as_int(lst_get_ptr(l, 5), &tmp) != 0)
           die("ERROR: bad line in MAF file --\n\t\"%s\"\n", line->chars);
 
         if (*refseqlen == -1) *refseqlen = tmp;
@@ -1217,16 +1217,16 @@ void maf_quick_peek(FILE *F, char ***names, Hashtable *name_hash, int *nseqs, in
    previous blocks to the 'redundant_blocks' list.  If map is
    non-NULL, then construct a coordinate map for the reference
    sequence (map object assumed to be preallocated).  */
-void maf_peek(FILE *F, char ***names, Hashtable *name_hash, 
+void maf_peek(FILE *F, char ***names, Hashtable *name_hash,
               int *nseqs, msa_coord_map *map, List *redundant_blocks,
               int keep_overlapping, int *refseqlen) {
   String *line = str_new(STR_VERY_LONG_LEN);
-  int count = 0, seqidx = 0, gaplen, tmp, startidx, i, 
+  int count = 0, seqidx = 0, gaplen, tmp, startidx, i,
     length, last_endidx = -1, block_no = 0, skip = 0, endidx;
   String *fullname = str_new(STR_SHORT_LEN), *name = str_new(STR_SHORT_LEN);
   String *s;
   List *gp_list = (map != NULL ? lst_new_ptr(10000) : NULL);
-  List *l = lst_new_ptr(7), *block_starts = lst_new_int(1000), 
+  List *l = lst_new_ptr(7), *block_starts = lst_new_int(1000),
     *block_ends = lst_new_int(1000);
   fpos_t pos;
 
@@ -1256,16 +1256,16 @@ void maf_peek(FILE *F, char ***names, Hashtable *name_hash,
 
       if (seqidx == 0 && !keep_overlapping) { /* reference sequence */
         str_split(line, NULL, l);
-        if (lst_size(l) != 7 || 
+        if (lst_size(l) != 7 ||
             str_as_int(lst_get_ptr(l, 2), &startidx) != 0 ||
             str_as_int(lst_get_ptr(l, 3), &length) != 0 ||
-            str_as_int(lst_get_ptr(l, 5), &tmp) != 0) 
+            str_as_int(lst_get_ptr(l, 5), &tmp) != 0)
           die("ERROR: bad line in MAF file --\n\t\"%s\"\n", line->chars);
 
         if (*refseqlen == -1) *refseqlen = tmp;
 
         skip = 0;
-        if (tmp != *refseqlen || 
+        if (tmp != *refseqlen ||
             ((String*)lst_get_ptr(l, 4))->chars[0] != '+') {
           fprintf(stderr, "WARNING: Reference sequence length or strand does not match previous blocks, ignoring block starting with:\n\t%s", line->chars);
           lst_push_int(redundant_blocks, block_no);
@@ -1283,10 +1283,10 @@ void maf_peek(FILE *F, char ***names, Hashtable *name_hash,
         }
         else if (!skip) {       /* have to search list */
           int block_list_idx = lst_bsearch_int(block_starts, startidx);
-          int prev_end = block_list_idx >= 0 ? 
+          int prev_end = block_list_idx >= 0 ?
             lst_get_int(block_ends, block_list_idx) : -1;
           int next_start = block_list_idx+1 < lst_size(block_starts) ?
-            lst_get_int(block_starts, block_list_idx+1) : endidx+1;         
+            lst_get_int(block_starts, block_list_idx+1) : endidx+1;
           if (prev_end >= startidx || next_start <= endidx) {
 /*             fprintf(stderr, "WARNING: MAF block (%d-%d in ref. seq.) overlaps a previous block -- ignoring.\n", startidx, endidx); */
             lst_push_int(redundant_blocks, block_no);
@@ -1340,14 +1340,14 @@ void maf_peek(FILE *F, char ***names, Hashtable *name_hash,
   if (map != NULL) {
     int partial_gap_sum = 0;
     struct gap_pair *gp, *nextgp;
-    
-    lst_qsort(gp_list, gap_pair_compare);    
+
+    lst_qsort(gp_list, gap_pair_compare);
 
     map->seq_list = lst_new_int(lst_size(gp_list) + 1);
     map->msa_list = lst_new_int(lst_size(gp_list) + 1);
 
     /* "prime" coord map */
-    lst_push_int(map->seq_list, 1); 
+    lst_push_int(map->seq_list, 1);
     lst_push_int(map->msa_list, 1);
 
     /* build coord map from gap list */
@@ -1385,12 +1385,12 @@ void maf_peek(FILE *F, char ***names, Hashtable *name_hash,
    possible (see details below).  Shifts all coords such that
    start_idx is position 1.  Assumes main gff is sorted.  Designed for
    repeated calls. */
-void maf_block_sub_gff(GFF_Set *sub_gff, GFF_Set *gff, int start_idx, 
+void maf_block_sub_gff(GFF_Set *sub_gff, GFF_Set *gff, int start_idx,
                        int end_idx, int *gff_idx, CategoryMap *cm,
                        int reverse_compl, int tuple_size) {
   int first_extend = -1;
   GFF_Feature *feat;
-  for (; *gff_idx < lst_size(gff->features) && 
+  for (; *gff_idx < lst_size(gff->features) &&
          (feat = lst_get_ptr(gff->features, *gff_idx))->start <= end_idx;
        (*gff_idx)++) {           /* look at all that overlap */
     GFF_Feature *featcpy;
@@ -1408,25 +1408,25 @@ void maf_block_sub_gff(GFF_Set *sub_gff, GFF_Set *gff, int start_idx,
     if (feat->start < start_idx || feat->end > end_idx) {
       int cat = cm_get_category(cm, feat->feature);
       if (cm->ranges[cat]->start_cat_no != cm->ranges[cat]->end_cat_no &&
-          feat->frame == GFF_NULL_FRAME) 
+          feat->frame == GFF_NULL_FRAME)
         continue;
     }
 
     featcpy = gff_new_feature_copy(feat);
     if (featcpy->start < start_idx) {
-      if (featcpy->strand != '-' && featcpy->frame != GFF_NULL_FRAME) 
+      if (featcpy->strand != '-' && featcpy->frame != GFF_NULL_FRAME)
         featcpy->frame = (featcpy->frame + start_idx - featcpy->start) % 3;
       featcpy->start = start_idx;
     }
     if (featcpy->end > end_idx) {
       int effective_end = end_idx;
-      if (featcpy->strand == '-' && reverse_compl) 
+      if (featcpy->strand == '-' && reverse_compl)
 	effective_end -= (tuple_size - 1);
                                 /* if we truncate a feature that is to
                                    be reverse complemented, we have to
                                    be careful not to introduce
                                    artificial context */
-      if (featcpy->strand == '-' && featcpy->frame != GFF_NULL_FRAME) 
+      if (featcpy->strand == '-' && featcpy->frame != GFF_NULL_FRAME)
         featcpy->frame = (featcpy->frame + featcpy->end - effective_end) % 3;
       featcpy->end = effective_end;
     }
