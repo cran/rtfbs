@@ -22,7 +22,7 @@
 #define DERIV_EPSILON 1e-6
 /* for numerical computation of derivatives */
 
-#define NSAMPLES_FIM 50
+#define NSAMPLES_FIM 1000
 /* number of samples to use in estimating FIM */
 
 #define SIGFIGS 4
@@ -1032,6 +1032,9 @@ void col_score_tests_sub(TreeModel *mod, MSA *msa, mode_type mode,
   for (i = 0; i < msa->ss->ntuples; i++) {
     checkInterruptN(i, 100);
 
+    //# TODO : REMOVE!!
+    set_seed(1);
+
     /* first check for informative substitution data in column; if none,
        don't waste time computing score */
     if (!col_has_data_sub(mod, msa, i, inside, outside)) {
@@ -1074,7 +1077,10 @@ void col_score_tests_sub(TreeModel *mod, MSA *msa, mode_type mode,
           (mode == CON && grad->data[1] > 0))
         teststat = 0;             /* derivative points toward boundary;
                                      truncate at 0 */
+
+      mat_free(fim);
     }
+
 
     if (tuple_pvals != NULL) {
       if (mode == NNEUT || mode == CONACC)
@@ -1445,6 +1451,7 @@ Matrix *col_estimate_fim_sub(TreeModel *mod) {
   MSA *msa = tm_generate_msa(NSAMPLES_FIM, NULL, &mod, NULL);
   ColFitData *d = col_init_fit_data(mod, msa, SUBTREE, NNEUT, TRUE);
   int i;
+  static int count=0;
 
   ss_from_msas(msa, 1, TRUE, NULL, NULL, NULL, -1, 0);
   mat_zero(fim);
@@ -1452,10 +1459,13 @@ Matrix *col_estimate_fim_sub(TreeModel *mod) {
     d->tupleidx = i;
     col_scale_derivs_subtree(d, grad, hessian, d->fels_scratch);
     mat_scale(hessian, -1 * msa->ss->counts[i]);
+    //    printf("  %i\t%f\n", i, hessian->data[1][1] - hessian->data[0][1]*hessian->data[1][0]/hessian->data[0][0]); fflush(stdout);
                                 /* now (observed) Fisher matrix
                                    weighted by count */
     mat_plus_eq(fim, hessian);   /* add to running total */
   }
+  printf("%i\t%f\t%f\n", count++, mod->scale, (fim->data[1][1] - fim->data[0][1]*fim->data[1][0]/fim->data[0][0]));fflush(stdout);
+
   mat_scale(fim, 1.0/NSAMPLES_FIM);   /* convert total to sample mean */
 
   msa_free(msa);
@@ -1541,6 +1551,8 @@ Matrix *col_get_fim_sub(FimGrid *g, double scale) {
     idx = (int)floor(scale / GRIDSIZE1);
   else
     idx = g->ngrid1 + (int)floor(log(scale) / GRIDSIZE2);
+
+  //  fprintf(stderr, "%f\t%i\t%i\t%i\n", scale, idx, g->ngrid1, g->ngrid);
 
   if (idx >= g->ngrid - 1)
     retval = mat_create_copy(g->fim[g->ngrid - 1]);

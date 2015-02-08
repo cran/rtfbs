@@ -1,5 +1,5 @@
 AC_PREREQ(2.57)
-AC_INIT([rtfbs], 0.3.3, [mjhubisz@cornell.edu], [], [http://compgen.cshl.edu/rtfbs])
+AC_INIT([rtfbs], 0.3.4, [mjhubisz@cornell.edu], [], [http://compgen.cshl.edu/rtfbs])
 #AC_CONFIG_SRCDIR([RTFBS/src/rph_init.c])
 
 : ${R_HOME=`R RHOME`}
@@ -13,7 +13,7 @@ CC=`"${R_HOME}/bin/R" CMD config CC`
 #RCFLAGS=`"${R_HOME}/bin/R" CMD config CFLAGS`
 RCFLAGS="-g "
 #CFLAGS="${RCFLAGS} ${CFLAGS}"
-CFLAGS=" -g " # -fopenmp "
+CFLAGS="${CFLAGS} -g " # -fopenmp "
 AC_MSG_RESULT(${CFLAGS})
 AC_PROG_CC
 AC_MSG_RESULT(${CFLAGS})
@@ -22,6 +22,8 @@ AC_MSG_RESULT(${CFLAGS})
 AC_FUNC_ALLOCA
 AC_HEADER_STDC
 AC_CHECK_HEADERS([stddef.h stdlib.h string.h strings.h sys/time.h unistd.h])
+
+AC_CHECK_HEADER(pcre.h, , [AC_MSG_ERROR([Couldn't find pcre.h... download/install at www.pcre.org])])
 
 
 # Checks for typedefs, structures, and compiler characteristics.
@@ -43,8 +45,6 @@ AC_CHECK_FUNCS([atexit bzero floor gethostname gettimeofday memset pow re_comp r
 AC_SEARCH_LIBS([pcre_compile], [pcre], [],
  [AC_MSG_RESULT(no)
   AC_MSG_ERROR([ Need to install pcre ])])
-
-LIBS="${OLD_LIBS} "
 
 OLD_CFLAGS=${CFLAGS}
 CFLAGS="${CFLAGS} -fno-strict-aliasing "

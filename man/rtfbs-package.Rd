@@ -3,7 +3,7 @@
 \alias{rtfbs}
 \docType{package}
 \title{
-R Transcription Factor Binding Site identification tool
+Transcription Factor Binding Site Identification Tool
 }
 \description{
 RTFBS identifies and scores possible Transcription Factor
@@ -18,16 +18,16 @@ Copyright: \tab Copyright (c) 2002-2015 University of California, Cornell\cr
 \tab University\cr
 Package: \tab rtfbs\cr
 License: \tab BSD_3_clause + file LICENSE\cr
-Version: \tab 0.3.3\cr
+Version: \tab 0.3.4\cr
 URL: \tab http://compgen.cshl.edu/rtfbs\cr
-Date: \tab 2015-01-08\cr
+Date: \tab 2015-02-08\cr
 Imports: \tab \cr
 \tab rphast\cr
 Depends: \tab \cr
 \tab stats\cr
 Collate: \tab \cr
 \tab 'tfbs.R'\cr
-Built: \tab R 3.1.2; x86_64-unknown-linux-gnu; 2015-01-12 22:22:51 UTC; unix\cr
+Built: \tab R 3.1.2; x86_64-pc-linux-gnu; 2015-02-09 03:53:14 UTC; unix\cr
 }
 
 Index:
