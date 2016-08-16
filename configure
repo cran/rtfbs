@@ -3660,7 +3660,7 @@ ac_fn_c_check_header_mongrel "$LINENO" "pcre.h" "ac_cv_header_pcre_h" "$ac_inclu
 if test "x$ac_cv_header_pcre_h" = xyes; then :
 
 else
-  as_fn_error $? "Couldn't find pcre.h... download/install at www.pcre.org" "$LINENO" 5
+  as_fn_error $? "Couldn not find pcre.h... download/install at www.pcre.org" "$LINENO" 5
 fi
 
 
@@ -4326,7 +4326,10 @@ fi
 
 
 OLD_CFLAGS=${CFLAGS}
-CFLAGS="${CFLAGS} -fno-strict-aliasing "
+
+# removed -g flag (CRAN rules)
+#CFLAGS="${CFLAGS} -fno-strict-aliasing "
+CFLAGS="-fno-strict-aliasing"
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for -fno-strict-aliasing" >&5
 $as_echo_n "checking for -fno-strict-aliasing... " >&6; }
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext

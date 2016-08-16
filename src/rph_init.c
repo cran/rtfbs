@@ -33,7 +33,7 @@ SEXP rph_gff_append(SEXP gffListP);
 SEXP rph_gff_split(SEXP gffP, SEXP maxLengthP, SEXP dropP, SEXP splitFromRightP);
 SEXP rph_gff_sort(SEXP gffP);
 SEXP rph_gff_nonOverlapping_genes(SEXP gffP);
-SEXP rph_gff_flatten(SEXP gffP);
+SEXP rph_gff_flatten(SEXP gffP, SEXP weightedAverageScoreP, SEXP minScoreP);
 SEXP rph_gff_convert_coords(SEXP gffP, SEXP msaP, SEXP toP);
 SEXP rph_hmm_new(SEXP matrixP, SEXP eqFreqP, SEXP beginFreqP, SEXP endFreqP);
 SEXP rph_hmm_new_from_file(SEXP filenameP);
@@ -206,7 +206,7 @@ void R_init_RTFBS(DllInfo *info) {
     {"rph_gff_split", (DL_FUNC)&rph_gff_split, 4},
     {"rph_gff_sort", (DL_FUNC)&rph_gff_sort, 1},
     {"rph_gff_nonOverlapping_genes", (DL_FUNC)&rph_gff_nonOverlapping_genes, 1},
-    {"rph_gff_flatten", (DL_FUNC)&rph_gff_flatten, 1},
+    {"rph_gff_flatten", (DL_FUNC)&rph_gff_flatten, 3},
     {"rph_gff_convert_coords", (DL_FUNC)&rph_gff_convert_coords, 3},
     {"rph_hmm_new", (DL_FUNC)&rph_hmm_new, 4},
     {"rph_hmm_new_from_file", (DL_FUNC)&rph_hmm_new_from_file, 1},

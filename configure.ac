@@ -23,7 +23,7 @@ AC_FUNC_ALLOCA
 AC_HEADER_STDC
 AC_CHECK_HEADERS([stddef.h stdlib.h string.h strings.h sys/time.h unistd.h])
 
-AC_CHECK_HEADER(pcre.h, , [AC_MSG_ERROR([Couldn't find pcre.h... download/install at www.pcre.org])])
+AC_CHECK_HEADER(pcre.h, , [AC_MSG_ERROR([Couldn not find pcre.h... download/install at www.pcre.org])])
 
 
 # Checks for typedefs, structures, and compiler characteristics.
@@ -47,7 +47,10 @@ AC_SEARCH_LIBS([pcre_compile], [pcre], [],
   AC_MSG_ERROR([ Need to install pcre ])])
 
 OLD_CFLAGS=${CFLAGS}
-CFLAGS="${CFLAGS} -fno-strict-aliasing "
+
+# removed -g flag (CRAN rules)
+#CFLAGS="${CFLAGS} -fno-strict-aliasing "
+CFLAGS="-fno-strict-aliasing" 
 AC_MSG_CHECKING(for -fno-strict-aliasing)
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM()], AC_MSG_RESULT(yes), [AC_MSG_RESULT(no)
 		                           CFLAGS=${OLD_CFLAGS}])

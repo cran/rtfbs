@@ -6,7 +6,7 @@
 Transcription Factor Binding Site Identification Tool
 }
 \description{
-RTFBS identifies and scores possible Transcription Factor
+Identifies and scores possible Transcription Factor
     Binding Sites and allows for FDR analysis and pruning.  It supports
     splitting of sequences based on size or a specified GFF, grouping
     by G+C content, and specification of Markov model order.  The heavy
@@ -14,20 +14,22 @@ RTFBS identifies and scores possible Transcription Factor
 }
 \details{
 \tabular{ll}{
-Copyright: \tab Copyright (c) 2002-2015 University of California, Cornell\cr
-\tab University\cr
+Copyright: \tab Copyright (c) 2002-2016 University of California, Cornell\cr
+\tab University, Cold Spring Harbor Laboratory.\cr
 Package: \tab rtfbs\cr
 License: \tab BSD_3_clause + file LICENSE\cr
-Version: \tab 0.3.4\cr
+Version: \tab 0.3.5\cr
 URL: \tab http://compgen.cshl.edu/rtfbs\cr
-Date: \tab 2015-02-08\cr
+Date: \tab 2016-08-15\cr
 Imports: \tab \cr
-\tab rphast\cr
+\tab rphast,\cr
+\tab methods\cr
 Depends: \tab \cr
 \tab stats\cr
 Collate: \tab \cr
 \tab 'tfbs.R'\cr
-Built: \tab R 3.1.2; x86_64-pc-linux-gnu; 2015-02-09 03:53:14 UTC; unix\cr
+RoxygenNote: \tab 5.0.1\cr
+Built: \tab R 3.1.2; x86_64-unknown-linux-gnu; 2016-08-15 20:31:08 UTC; unix\cr
 }
 
 Index:
@@ -51,7 +53,8 @@ names.ms                MS Sequence Names
 offsets.ms              Get index offsets
 output.sites            Threshold possible binding sites by Score or
                         FDR
-print.ms                Printing MS objects
+print.ms                Prints an MS (multiple sequence) object. #'
+                        @title Printing MS objects
 read.mm                 Read Markov Model from file
 read.ms                 Reading in sequences from file
 read.pwm                Read PWM object

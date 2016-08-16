@@ -10,3 +10,5 @@
 	match scores for each strand, and under the background model.
 12-5-2013: 0.3.1 Fixed memory allocation error in read.ms
 1-12-2015: 0.3.3 Cleaned up some warnings and removed pcre
+8-15-2016: 0.3.5 Removed -g flag ( CRAN rules)
+

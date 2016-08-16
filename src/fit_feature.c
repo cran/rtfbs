@@ -184,8 +184,8 @@ void ff_lrts(TreeModel *mod, MSA *msa, GFF_Set *gff, mode_type mode,
       this_scale = d->cdata->params->data[0];
 
       delta_lnl = alt_lnl - null_lnl;
-      if (delta_lnl <= -1)
-	die("ERROR ff_lrts: delta_lnl (%f) <= -1\n", delta_lnl);
+      if (delta_lnl <= -0.01)
+	die("ERROR ff_lrts: delta_lnl (%f) <= -0.01\n", delta_lnl);
       if (delta_lnl < 0) delta_lnl = 0;
     }
 
