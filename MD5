@@ -1,15 +1,15 @@
-f357a105ea70dd1c8c9c060ff0ce7257 *ChangeLog
-3e99afb581be4c11b5ee0e510df93807 *DESCRIPTION
+c8af4721e020609e1ab7063809570315 *ChangeLog
+3786ea567ff5b7e05c6292128070e924 *DESCRIPTION
 559e1ba4e87d54deeae6c22d51164c62 *LICENSE
-e274db7f6f9d928fe5d4943dd644588a *NAMESPACE
-c95e3fd31f924f2d8edcb21d44044a48 *R/tfbs.R
+17934b3643f332ffee114816ae796118 *NAMESPACE
+45c3401c964447504f8fe72aabee047a *R/tfbs.R
 e24b0c04f95ee388a1eeff7fecc1d15e *build/vignette.rds
 fb4a6ee79a798e611bcc8177f3f1c018 *cleanup
 406ce1460e819bafda935cf3d6eef4f9 *configure
 bf36c473a5878b0fad6c6309295d6dda *configure.ac
 611ba9919348d4e982bea2ac9fe0ec51 *inst/doc/vignette.R
 66bf15c555c8d7926fa3b247ac437739 *inst/doc/vignette.Rnw
-cebc5b89f19f45e07ec0298d9aac677f *inst/doc/vignette.pdf
+82cccf1b8c345731cd00ec452d2f2f09 *inst/doc/vignette.pdf
 c777630b99dc55e5db310d8f2607b447 *inst/extdata/NRSF.zip
 9456c55961e019cdff652965598005c0 *man/as.pointer.ms.Rd
 933c101496fe4417b4ec627201387f8e *man/build.mm.Rd
@@ -32,7 +32,7 @@ ce31722bc9458204fcdac3c57c75da47 *man/print.ms.Rd
 e8cd90747a6b1b29fac00ca1472dd05b *man/read.mm.Rd
 e44ecf8fca75e3c06cc93cbd40967bfd *man/read.ms.Rd
 d2d7e4c0e042c9971bb393161339eb28 *man/read.pwm.Rd
-7f4c578b73fe30d51946ecdddd4fa7df *man/rtfbs-package.Rd
+135f3afa21fae5e116d8843bbd1acbf3 *man/rtfbs-package.Rd
 07e41d3ac853e91a1712c841e3390123 *man/score.ms.Rd
 e3f1381732b667cf429cebfff8f110e5 *man/sequences.ms.Rd
 2a65e762fd9988d4697a326a6ab7a7b7 *man/simulate.ms.Rd
@@ -40,8 +40,8 @@ e3f1381732b667cf429cebfff8f110e5 *man/sequences.ms.Rd
 3cf7cc5fe5501a0beab40daf78062050 *man/summary.ms.Rd
 894055156e9879be3fbb162a7964718c *man/write.mm.Rd
 2fec75b03dde3a83ddec7f96751dc114 *man/write.ms.Rd
-74772b1ae8d35547f65a8db9f7086aa7 *src/Makevars.in
-b6f68b2fc3e8158cdb33e5ed0702df88 *src/Makevars.win
+5ef15386135ad21f509ca0cdf83bb7b6 *src/Makevars.in
+f4d4ab9731f86c6043416db3045a4137 *src/Makevars.win
 400f74484de7e6a072f82c35b3b437a2 *src/bd_phylo_hmm.h
 8ce2b292099b62be73731f2d0136e2b9 *src/bed.c
 e4c0310528a0982d24d9009e3a9fddac *src/bed.h
@@ -60,7 +60,7 @@ bb58cbc04e603d74882beff2373a8cbf *src/dgamma.c
 ecacc79ea6256c3259cfafc443d9c797 *src/eigen.h
 14d9e684c4c56589c58c1f48ab5f1b2b *src/em.c
 d5f2478276b28622ef767c09fea84429 *src/em.h
-1bf942174e85625881b4cd0204a88e70 *src/external_libs.h
+ac34d919b9200fa1290e70e474632879 *src/external_libs.h
 0804c52aa194d55a4f8dfa0ef1f01aba *src/fit_column.c
 3fbd3b5d5c759732aba37d93f819caee *src/fit_column.h
 bf43e8cb0cd41acefe56adac2c2cc936 *src/fit_em.c
@@ -130,7 +130,7 @@ d24fc7d05f9b86790a9d5608f6a05599 *src/rph_bgc_hmm.c
 6afd0852f23269b073b7cd6981ceeb81 *src/rph_category_map.c
 d78034d8c8997ef0b94338e9c2e2681c *src/rph_gff.c
 170726ba2e945c216ecb73719bfe28bc *src/rph_hmm.c
-9ed4bbc566c9c1ba37b1c69bc8a3fe6f *src/rph_init.c
+de9ac2f6802a93479d8b26ca19ffacdc *src/rph_init.c
 1d12eb8bc2ff94730070a69a5dd144aa *src/rph_list_of_lists.c
 6409b2b7ebfa39f0d7ad493de7c0200a *src/rph_msa.c
 8e42967955eb885eb60339e52593c4ca *src/rph_phastCons.c
@@ -138,7 +138,7 @@ c2da4fe1ebfacc69c1408a2a5417c752 *src/rph_phyloFit.c
 2853fe713e7631e8d3d8b15eb4487bea *src/rph_phyloP.c
 0559abab8f3c819c7c1d6ccdc251f6a8 *src/rph_phylo_hmm.c
 3684ae315821c9f68bd2635d3cf13a8c *src/rph_subst_mods.c
-196f73bdd9c2931075fb26fce115b16c *src/rph_tfbs.c
+b8de2268f175fc1f2fabe460169b7a30 *src/rph_tfbs.c
 7c7b2cde1b3456db6e9b6a2530aedc53 *src/rph_tree_model.c
 ede642b93405012b80af4ac3ff7b9091 *src/rph_trees.c
 ba836d7af0821d7012b68b9e438b2159 *src/rph_util.c
@@ -152,7 +152,7 @@ ee891119c38ca130a1d4a3dc865ef3ba *src/stacks.h
 b41069c24239307f7b68561cc9a9053d *src/subst_distrib.h
 fdca1f757871ffd3f31d18e01f442dad *src/subst_mods.c
 0ddc397aa3149af87cabc751f2e88b04 *src/subst_mods.h
-8c578ff990c120f18a1eece4b3ffcee3 *src/sufficient_stats.c
+4a15d4ba7daf562487f714249bcdaf72 *src/sufficient_stats.c
 bfc8d698ed024e85af70aaae28bdcf3e *src/sufficient_stats.h
 31465448da4df2467e9e2b811fee121e *src/tfbs.c
 ffd9e03aff0ec7936bf3c57c3e83b7b1 *src/tfbs.h
@@ -164,7 +164,7 @@ b3067f50a086975c2826938377cbb6ed *src/tree_likelihoods.h
 fb5bcdb61eab74eecdf117a9f7b39aac *src/trees.h
 192b8182444d92301fa780cb7ec99b99 *src/vector.c
 664e8dae951f5fdf91eb0657644d13da *src/vector.h
-516a248ab5ee585ac588a1b85790ad79 *src/version
+4baffeb035d01ea37ea5b3ad590bd7da *src/version
 6238b852a504c6d9b4d5c5bd2c5ff188 *src/wig.c
 9c292b054c78343f5e81b5b51085f5d5 *src/wig.h
 1c5ee246a8de271af6c0a58361fc3715 *tests/build_mm.R

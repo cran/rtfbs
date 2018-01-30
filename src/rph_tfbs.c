@@ -573,7 +573,7 @@ SEXP ms_posterior_list(char *seqName, char *seqData, int seqLen, int seqIdxOff, 
   int i, k,j,l,col;
   double MMprob, PWMprob=0, ReversePWMprob=0;
 //  GFF_Set *scores = gff_new_set(); // CGD: Changed return type.
-  double *MMprobs = (double*)smalloc((pwm->nrows+1) * sizeof(double));    //Sliding window of mmOrder previous MM probabilities
+   double *MMprobs = (double*)smalloc((pwm->nrows+1) * sizeof(double));    //Sliding window of mmOrder previous MM probabilities
 
   // CGD: Create R list type.
   SEXP scores, motif, motif_plus, motif_minus, background;
@@ -605,10 +605,16 @@ SEXP ms_posterior_list(char *seqName, char *seqData, int seqLen, int seqIdxOff, 
   double *backgroundScore= REAL(background);
 
   if ((conservative != 0) && (conservative != 1))
-    die("ERROR: Conserverative (boolean) value must be 0 or 1");
-
-  if (seqLen < pwm->nrows)  //Check to see if the sequence is shorter than the pwm
-    return(scores);
+	{
+	  UNPROTECT(7); 
+	  die("ERROR: Conserverative (boolean) value must be 0 or 1");
+	} 
+ 
+if (seqLen < pwm->nrows)  //Check to see if the sequence is shorter than the pwm
+	{
+	  UNPROTECT(7);
+	  return(scores);
+	}
 
   for (i = 0; i <= pwm->nrows; i++)                                                     //Calculate MM scores from sites 0 to pwm->nrows
     if (i < seqLen)
@@ -655,7 +661,7 @@ SEXP ms_posterior_list(char *seqName, char *seqData, int seqLen, int seqIdxOff, 
 
   }
   sfree(MMprobs);
-  unprotect(7); // CGD: Must unprotect.
+  UNPROTECT(7); // CGD: Must unprotect.
   return(scores);
 }
 
@@ -703,7 +709,7 @@ SEXP rph_ms_posterior(SEXP inputMSP, SEXP pwmP, SEXP markovModelP, SEXP nOrderP,
     SET_VECTOR_ELT(scores, currentSequence, locus_score);
   }
 
-  unprotect(1);
+  UNPROTECT(1);
   return(scores);
 }
 
@@ -808,7 +814,7 @@ SEXP rph_ms_simulate(SEXP mmP, SEXP norderP, SEXP alph_sizeP, SEXP lengthP) //do
     seq = ms_simulate(MarkovMatrices, norder, alph_size, length[i]);
     //printf("simulated seq %s\n", seq);
 
-    snprintf(name, 10, "S%d", i);
+    sprintf(name, "S%d", i);
     outputMS->names[i] = (char*)smalloc((strlen(name)+1) * sizeof(char));
     strncpy(outputMS->names[i], name, strlen(name));
     outputMS->names[i][strlen(name)] = '\0';

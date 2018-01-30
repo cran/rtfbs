@@ -1,7 +1,7 @@
-Copyright: Copyright (c) 2002-2016 University of California, Cornell
+Copyright: Copyright (c) 2002-2018 University of California, Cornell
         University, Cold Spring Harbor Laboratory.
 Package: rtfbs
-Maintainer: Melissa Hubisz <mjhubisz@cornell.edu>
+Maintainer: Ritika Ramani<rramani@cshl.edu>
 License: BSD_3_clause + file LICENSE
 Title: Transcription Factor Binding Site Identification Tool
 Author: Nicholas Peterson, Andre Martins, Melissa Hubisz, and Adam
@@ -11,14 +11,14 @@ Description: Identifies and scores possible Transcription Factor
     splitting of sequences based on size or a specified GFF, grouping
     by G+C content, and specification of Markov model order.  The heavy
     lifting is done in C while all results are made available via R.
-Version: 0.3.5
+Version: 0.3.9
 URL: http://compgen.cshl.edu/rtfbs
-Date: 2016-08-15
+Date: 2018-01-30
 Imports: rphast, methods
 Depends: stats
 Collate: 'tfbs.R'
 RoxygenNote: 5.0.1
-Packaged: 2016-08-15 20:34:06 UTC; rramani
+Packaged: 2018-01-30 20:26:19 UTC; rramani
 NeedsCompilation: yes
 Repository: CRAN
-Date/Publication: 2016-08-16 19:49:30
+Date/Publication: 2018-01-30 22:53:17 UTC

@@ -11,4 +11,7 @@
 12-5-2013: 0.3.1 Fixed memory allocation error in read.ms
 1-12-2015: 0.3.3 Cleaned up some warnings and removed pcre
 8-15-2016: 0.3.5 Removed -g flag ( CRAN rules)
-
+1-18-2018: 0.3.6 fixed warning as requested by CRAN 
+1-19-2018: 0.3.7 fixed warning as requested by CRAN 
+1-22-2018: 0.3.8 fixed notes and errors as requested by CRAN
+1-30-2018: 0.3.9 fixed R_useDynamicSymbols note

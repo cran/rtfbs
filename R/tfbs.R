@@ -211,7 +211,7 @@ as.pointer.ms <- function(src) {
 #' \link{lengths.ms}, \link{names.ms}, \link{print.ms},
 #' \link{write.ms}, \link{[.ms}, \link{as.pointer.ms}, \link{from.pointer.ms},
 #' \link{is.pointer.ms}}
-#' @useDynLib rtfbs
+#' @useDynLib rtfbs, .registration = TRUE
 #' @keywords ms
 #' @export ms
 #' @author Nick Peterson

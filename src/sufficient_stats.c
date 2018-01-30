@@ -137,7 +137,7 @@ void ss_from_msas(MSA *msa, int tuple_size, int store_order,
 		do_cats, store_order);
     if (source_msa->ss != NULL) 
       upper_bound = msa->ss->ntuples + source_msa->ss->ntuples;
-    else
+   else
       upper_bound = msa->ss->ntuples + source_msa->length;
       max_tuples = pow_bounded(strlen(msa->alphabet) + (int)strlen(msa->missing) + 1,
                          msa->nseqs * tuple_size,
