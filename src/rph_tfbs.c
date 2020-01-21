@@ -348,12 +348,12 @@ SEXP rph_ms_split_size(SEXP sequencesP, SEXP windowSizeP)
         {
           //Copy name of sequence
           outputMS->names[outputSeqNum] = (char*)smalloc((strlen(inputMS->names[inputSeqNum])+1) * sizeof(char));
-          strncpy(outputMS->names[outputSeqNum], inputMS->names[inputSeqNum], strlen(inputMS->names[inputSeqNum]));
+	  strcpy(outputMS->names[outputSeqNum], inputMS->names[inputSeqNum]);
           outputMS->names[outputSeqNum][strlen(inputMS->names[inputSeqNum])] = '\0';
 	   
           //Copy subset of sequence bases
           outputMS->seqs[outputSeqNum] = (char*)smalloc((windowSize + 1) * sizeof(char));
-          strncpy(outputMS->seqs[outputSeqNum], inputMS->seqs[inputSeqNum] + nextCutAt, windowSize);
+	  strncpy(outputMS->seqs[outputSeqNum], inputMS->seqs[inputSeqNum] + nextCutAt, windowSize);
           outputMS->seqs[outputSeqNum][windowSize] = '\0';
 	   
           //Set index offset of new sequence
@@ -368,13 +368,13 @@ SEXP rph_ms_split_size(SEXP sequencesP, SEXP windowSizeP)
         {
           //Copy name of sequence
           outputMS->names[outputSeqNum] = (char*)smalloc((strlen(inputMS->names[inputSeqNum])+1) * sizeof(char*));
-          strncpy(outputMS->names[outputSeqNum], inputMS->names[inputSeqNum], strlen(inputMS->names[inputSeqNum]));
+	  strcpy(outputMS->names[outputSeqNum], inputMS->names[inputSeqNum]);
           outputMS->names[outputSeqNum][strlen(inputMS->names[inputSeqNum])] = '\0';
 	   
           //Copy subset of sequence bases 
           inputSeqLen = strlen(inputMS->seqs[inputSeqNum]);
           outputMS->seqs[outputSeqNum] = (char*)smalloc((inputSeqLen-nextCutAt + 1) * sizeof(char*));
-          strncpy(outputMS->seqs[outputSeqNum], inputMS->seqs[inputSeqNum] + nextCutAt, inputSeqLen-nextCutAt);
+	  strncpy(outputMS->seqs[outputSeqNum], inputMS->seqs[inputSeqNum] + nextCutAt, inputSeqLen-nextCutAt);
           outputMS->seqs[outputSeqNum][inputSeqLen-nextCutAt] = '\0';
 	   
           //Set index offset of the new sequence
@@ -476,7 +476,7 @@ SEXP rph_ms_split_gff(SEXP sequencesP, SEXP featuresP)
 					
           //Copy substring from sequence and create new MSA to hold subsequence specified by window
           outputMS->seqs[outputSeqNum] = (char*)smalloc((lengthOfSubSequence + 1) * sizeof(char));
-          strncpy(outputMS->seqs[outputSeqNum], inputMS->seqs[currentSequence] + (feature->start-1), lengthOfSubSequence);
+	  strcpy(outputMS->seqs[outputSeqNum], inputMS->seqs[currentSequence] + (feature->start-1));
           outputMS->seqs[outputSeqNum][lengthOfSubSequence] = '\0';
 					
           //Set index offset
@@ -573,7 +573,7 @@ SEXP ms_posterior_list(char *seqName, char *seqData, int seqLen, int seqIdxOff, 
   int i, k,j,l,col;
   double MMprob, PWMprob=0, ReversePWMprob=0;
 //  GFF_Set *scores = gff_new_set(); // CGD: Changed return type.
-   double *MMprobs = (double*)smalloc((pwm->nrows+1) * sizeof(double));    //Sliding window of mmOrder previous MM probabilities
+  double *MMprobs = (double*)smalloc((pwm->nrows+1) * sizeof(double));    //Sliding window of mmOrder previous MM probabilities
 
   // CGD: Create R list type.
   SEXP scores, motif, motif_plus, motif_minus, background;
@@ -605,16 +605,10 @@ SEXP ms_posterior_list(char *seqName, char *seqData, int seqLen, int seqIdxOff, 
   double *backgroundScore= REAL(background);
 
   if ((conservative != 0) && (conservative != 1))
-	{
-	  UNPROTECT(7); 
-	  die("ERROR: Conserverative (boolean) value must be 0 or 1");
-	} 
- 
-if (seqLen < pwm->nrows)  //Check to see if the sequence is shorter than the pwm
-	{
-	  UNPROTECT(7);
-	  return(scores);
-	}
+    die("ERROR: Conserverative (boolean) value must be 0 or 1");
+
+  if (seqLen < pwm->nrows)  //Check to see if the sequence is shorter than the pwm
+    return(scores);
 
   for (i = 0; i <= pwm->nrows; i++)                                                     //Calculate MM scores from sites 0 to pwm->nrows
     if (i < seqLen)
@@ -661,7 +655,7 @@ if (seqLen < pwm->nrows)  //Check to see if the sequence is shorter than the pwm
 
   }
   sfree(MMprobs);
-  UNPROTECT(7); // CGD: Must unprotect.
+  unprotect(7); // CGD: Must unprotect.
   return(scores);
 }
 
@@ -709,7 +703,7 @@ SEXP rph_ms_posterior(SEXP inputMSP, SEXP pwmP, SEXP markovModelP, SEXP nOrderP,
     SET_VECTOR_ELT(scores, currentSequence, locus_score);
   }
 
-  UNPROTECT(1);
+  unprotect(1);
   return(scores);
 }
 
@@ -816,12 +810,12 @@ SEXP rph_ms_simulate(SEXP mmP, SEXP norderP, SEXP alph_sizeP, SEXP lengthP) //do
 
     sprintf(name, "S%d", i);
     outputMS->names[i] = (char*)smalloc((strlen(name)+1) * sizeof(char));
-    strncpy(outputMS->names[i], name, strlen(name));
+    strcpy(outputMS->names[i], name);
     outputMS->names[i][strlen(name)] = '\0';
 
     //Copy subset of sequence bases
     outputMS->seqs[i] = (char*)smalloc((length[i] + 1) * sizeof(char));
-    strncpy(outputMS->seqs[i], seq, length[i]);
+    strcpy(outputMS->seqs[i], seq);
     outputMS->seqs[i][length[i]] = '\0';
     sfree(seq);
 	   

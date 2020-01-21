@@ -70,6 +70,9 @@ mm <- build.mm(ms, 3);
 #   Sites with a negative score are not returned unless 
 #   we set threshold=-Inf as a parameter.
 score.ms(ms, pwm, mm)
+unlink("pwm.meme")
+unlink("input.fas")
+
 }
 \seealso{
 \code{\link{read.ms} \link{split.ms} \link{groupByGC.ms} \link{build.mm} \link{read.pwm}}

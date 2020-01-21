@@ -80,6 +80,8 @@ xs <- score.ms(v, pwm, mm, threshold=-2)
 fdr <- calc.fdr(ms, cs, v, xs)
 # Print the Data.Frame containing the FDR/Score mapping
 fdr
+unlink("pwm.meme")
+unlink("input.fas")
 
 }
 \seealso{

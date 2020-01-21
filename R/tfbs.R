@@ -211,7 +211,7 @@ as.pointer.ms <- function(src) {
 #' \link{lengths.ms}, \link{names.ms}, \link{print.ms},
 #' \link{write.ms}, \link{[.ms}, \link{as.pointer.ms}, \link{from.pointer.ms},
 #' \link{is.pointer.ms}}
-#' @useDynLib rtfbs, .registration = TRUE
+#' @useDynLib rtfbs
 #' @keywords ms
 #' @export ms
 #' @author Nick Peterson
@@ -700,17 +700,16 @@ read.pwm <- function(filename) {
 #' @return Matrix with columns and (rows optional) named
 label.matrix <- function(mat, columnsOnly=FALSE) {
   check.arg(columnsOnly, "columnsOnly", "logical", null.OK=FALSE)
-  if (class(mat) == "list")
+  if (is.element("list", class(mat))) 
   {
     for(entry in 1:length(mat))
     {
       mat[[entry]] <- label.matrix(mat[[entry]], columnsOnly);
     }
-  } else if (class(mat) == "matrix")
+  } else if (is.element("matrix", class(mat)))
   {
     name <- list();
     bases <- list("A","C","G","T");
-   
     if(columnsOnly == FALSE)
     { 
       #name rows

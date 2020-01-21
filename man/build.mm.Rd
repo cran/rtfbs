@@ -43,6 +43,8 @@ mm <- build.mm(ms, 3);
 # Print the list of 4 Markov Matrices that make up the 
 #   Markov Model 
 print(mm)
+unlink("input.fas")
+
 }
 \seealso{
 \code{\link{read.ms} \link{split.ms} \link{groupByGC.ms}}

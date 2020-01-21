@@ -7,3 +7,4 @@ unzip(exampleArchive, pwmFile)
 pwm <- read.pwm(pwmFile)
 # Print PWM as an R matrix
 print(pwm)
+unlink("pwm.meme")

@@ -79,5 +79,7 @@ output.sites(cs, NULL, fdr, 0.5)
 # Output identified transcription factor binding sites
 #   above a 5.2 score threshold 
 output.sites(cs, 5.2)
+unlink("pwm.meme")
+unlink("input.fas")
 }
 

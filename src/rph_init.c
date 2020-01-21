@@ -349,5 +349,4 @@ void R_init_RTFBS(DllInfo *info) {
     {NULL, NULL, 0}
   };
   R_registerRoutines(info, NULL, callMethods, NULL, NULL);
-  R_useDynamicSymbols(info, TRUE);
 }

@@ -44,6 +44,8 @@ mm <- build.mm(ms, 3);
 # Generate a sequence 1000 bases long using the supplied
 #   Markov Model and random numbers
 v <- simulate.ms(mm, 1000);
+unlink("input.fas")
+
 }
 \seealso{
 \code{\link{build.mm}} for details on Markov models,

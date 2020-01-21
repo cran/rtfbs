@@ -33,6 +33,8 @@ seqs <- read.ms(seqFile)
 # Print the number of sequences in the MS object and whether
 #   stored in C or R
 print(seqs)
+unlink("input.fas")
+
 }
 \seealso{
 \code{\link{ms}} for further description of MS objects and

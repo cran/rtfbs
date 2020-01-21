@@ -14,13 +14,13 @@ Identifies and scores possible Transcription Factor
 }
 \details{
 \tabular{ll}{
-Copyright: \tab Copyright (c) 2002-2018 University of California, Cornell\cr
+Copyright: \tab Copyright (c) 2002-2020 University of California, Cornell\cr
 \tab University, Cold Spring Harbor Laboratory.\cr
 Package: \tab rtfbs\cr
 License: \tab BSD_3_clause + file LICENSE\cr
-Version: \tab 0.3.9\cr
+Version: \tab 0.3.15\cr
 URL: \tab http://compgen.cshl.edu/rtfbs\cr
-Date: \tab 2018-01-30\cr
+Date: \tab 2020-01-21\cr
 Imports: \tab \cr
 \tab rphast,\cr
 \tab methods\cr
@@ -29,7 +29,8 @@ Depends: \tab \cr
 Collate: \tab \cr
 \tab 'tfbs.R'\cr
 RoxygenNote: \tab 5.0.1\cr
-Built: \tab R 3.1.2; x86_64-unknown-linux-gnu; 2018-01-30 20:25:08 UTC; unix\cr
+SystemRequirements: \tab PCRE\cr
+Built: \tab R 3.1.2; x86_64-unknown-linux-gnu; 2020-01-21 20:50:12 UTC; unix\cr
 }
 
 Index:

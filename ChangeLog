@@ -13,5 +13,5 @@
 8-15-2016: 0.3.5 Removed -g flag ( CRAN rules)
 1-18-2018: 0.3.6 fixed warning as requested by CRAN 
 1-19-2018: 0.3.7 fixed warning as requested by CRAN 
-1-22-2018: 0.3.8 fixed notes and errors as requested by CRAN
-1-30-2018: 0.3.9 fixed R_useDynamicSymbols note
+1-06-2020: 0.3.12 fixed error related to matrix issue as requested by CRAN
+1-21-2020: 0.3.15 fixed warnings and notes as requested by CRAN

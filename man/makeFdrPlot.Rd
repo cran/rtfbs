@@ -76,5 +76,8 @@ fdr <- calc.fdr(ms, cs, v, xs)
 #   data frames on a single plot, simply supply a list
 #   of FDR/Score data.frames 
 makeFdrPlot(fdr)
+unlink("pwm.meme")
+unlink("input.fas")
+
 }
 

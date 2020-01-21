@@ -11,3 +11,5 @@ seqs <- read.ms(seqFile)
 groups <- groupByGC.ms(seqs, 4)
 sapply(groups, length)
 sapply(groups, function(x) {range(gcContent.ms(x))})
+unlink("input.fas")
+
